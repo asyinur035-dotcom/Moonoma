@@ -1,84 +1,100 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\AdminController;
 
-Route::get('/', function () {
-    return redirect()->route('login');
-});
+Route::get('/', fn() => redirect()->route('login'));
 
-/*
-|--------------------------------------------------------------------------
-| Guest Routes
-|--------------------------------------------------------------------------
-*/
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.process');
+Route::view('/login', 'auth.login')->name('login');
+Route::post('/login', fn() => redirect()->route('home'))->name('login.process');
 
-Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-Route::post('/register', [AuthController::class, 'register'])->name('register.process');
+Route::view('/register', 'auth.register')->name('register');
+Route::post('/register', fn() =>
+    redirect()->route('verification')->with('success', 'Register berhasil!')
+)->name('register.process');
 
-/*
-|--------------------------------------------------------------------------
-| Auth Routes
-|--------------------------------------------------------------------------
-*/
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::view('/verification', 'auth.verification')->name('verification');
+Route::post('/verification', fn() =>
+    redirect()->route('login')->with('success', 'Verifikasi berhasil!')
+)->name('verify.otp');
 
-Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
-Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
-Route::post('/profile/update', [ProfileController::class, 'update'])->name('profile.update');
+Route::get('/resend-otp', fn() =>
+    back()->with('success', 'OTP dikirim ulang!')
+)->name('resend.otp');
 
-Route::get('/rooms', [RoomController::class, 'index'])->name('rooms');
-Route::get('/rooms/create', [RoomController::class, 'create'])->name('room.create');
-Route::post('/rooms/store', [RoomController::class, 'store'])->name('room.store');
-Route::get('/rooms/{slug}', [RoomController::class, 'show'])->name('rooms.show');
+Route::view('/forgot-password', 'auth.forgot-password')->name('password.request');
+Route::post('/forgot-password', fn() =>
+    redirect()->route('verification')->with('success', 'Reset dikirim!')
+)->name('password.email');
 
-Route::post('/rooms/{roomId}/join', [RoomController::class, 'join'])->name('rooms.join');
-Route::post('/rooms/join/code', [RoomController::class, 'joinByCode'])->name('rooms.join.code');
+Route::view('/home', 'home')->name('home');
+Route::view('/home/edit', 'home-edit')->name('home.edit');
 
-Route::get('/search', [RoomController::class, 'search'])->name('search');
+Route::post('/profile/save', function () {
+    session([
+        'name' => request('name'),
+        'role' => request('role'),
+    ]);
+    return response()->json(['success' => true]);
+})->name('profile.save');
 
-Route::get('/chat', function () {
+Route::get('/rooms', function () {
+    return view('rooms', [
+        'rooms' => session('rooms', [])
+    ]);
+})->name('rooms');
+
+Route::view('/rooms/create', 'create-room')->name('room.create');
+
+Route::post('/rooms/store', function () {
+    $rooms = session('rooms', []);
+
+    $rooms[] = [
+        'name' => request('name'),
+        'type' => request('type'),
+        'desc' => request('topic'),
+        'member' => 1,
+        'status' => request('status'),
+    ];
+
+    session(['rooms' => $rooms]);
+
     return redirect()->route('rooms');
-})->name('chat');
+})->name('room.store');
 
-Route::get('/chat/{roomId}', [MessageController::class, 'room'])->name('chat.room');
-Route::get('/rooms/{roomId}/messages', [MessageController::class, 'index'])->name('rooms.messages.index');
-Route::post('/rooms/{roomId}/messages', [MessageController::class, 'store'])->name('rooms.messages.store');
+Route::get('/search', function () {
+    $query = request('q');
+    $rooms = session('rooms', []);
 
-Route::get('/invite', function () {
-    return view('invite');
-})->name('invite.page');
+    if ($query) {
+        $rooms = array_filter($rooms, fn($room) =>
+            str_contains(strtolower($room['name']), strtolower($query)) ||
+            str_contains(strtolower($room['desc']), strtolower($query)) ||
+            str_contains(strtolower($room['type']), strtolower($query))
+        );
+    }
 
-Route::get('/chat/{roomId}/invite', [RoomController::class, 'invite'])->name('chat.invite');
+    return view('search', compact('rooms', 'query'));
+})->name('search');
 
-/*
-|--------------------------------------------------------------------------
-| Admin Routes
-|--------------------------------------------------------------------------
-*/
-Route::get('/admin', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-Route::get('/admin/users', [AdminController::class, 'users'])->name('admin.users');
-Route::get('/admin/rooms', [AdminController::class, 'rooms'])->name('admin.rooms');
-Route::get('/admin/activity', [AdminController::class, 'activity'])->name('admin.activity');
+Route::view('/profile', 'profile')->name('profile');
+Route::view('/profile/edit', 'edit-profile')->name('profile.edit');
 
-Route::post('/admin/users/delete/{id}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
-Route::post('/admin/rooms/delete/{id}', [AdminController::class, 'deleteRoom'])->name('admin.rooms.delete');
+Route::get('/logout', function () {
+    session()->flush();
+    return redirect()->route('login');
+})->name('logout');
 
-/*
-|--------------------------------------------------------------------------
-| Google Auth Placeholder
-|--------------------------------------------------------------------------
-*/
-Route::get('/auth/google', function () {
-    return 'Google login belum dibuat';
-})->name('google.redirect');
+Route::get('/chat', fn() => redirect()->route('rooms'))->name('chat');
 
-Route::get('/auth/google/callback', function () {
-    return 'Callback Google belum dibuat';
-});
+Route::get('/chat/{room}', function ($room) {
+    return view('chat', compact('room'));
+})->name('chat.room');
+
+Route::view('/invite', 'invite')->name('invite.page');
+
+Route::get('/chat/{room}/invite', function ($room) {
+    return view('invite', compact('room'));
+})->name('chat.invite');
+
+Route::get('/auth/google', fn() => 'Google login belum dibuat')->name('google.redirect');
+Route::get('/auth/google/callback', fn() => 'Callback Google belum dibuat');
