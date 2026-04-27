@@ -89,10 +89,11 @@
 
 <div id="chatBox" class="chat-box"></div>
 
-<div class="chat-input">
-    <input type="text" id="msgInput" placeholder="Message...">
-    <div class="send-btn" onclick="sendMsg()">➤</div>
-</div>
+<form method="POST" action="{{ route('chat.send', $room) }}" class="chat-input">
+    @csrf
+    <input type="text" name="message" placeholder="Message..." required>
+    <button class="send-btn">➤</button>
+</form>
 
 <script>
 let room = currentRoom; // 🔥 FIX

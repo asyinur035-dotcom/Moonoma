@@ -149,9 +149,9 @@ body{
 
     <!-- PROFILE -->
     <div class="bottom-profile">
-        <div class="mini-avatar">NA</div>
+        <div class="mini-avatar">Un</div>
         <div>
-            <div style="font-size:12px;">Nur Asyiah</div>
+            <div style="font-size:12px;">Unknown</div>
             <div style="font-size:10px;color:#888;">Designer</div>
         </div>
     </div>
