@@ -190,6 +190,35 @@ Route::post('/rooms/join/{slug}', function ($slug) {
 
 /*
 |--------------------------------------------------------------------------
+| INVITE (JOIN VIA CODE)
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/invite', function () {
+    return view('invite');
+})->name('invite.page');
+
+Route::post('/invite/join', function (\Illuminate\Http\Request $request) {
+    $code = strtoupper($request->code);
+    $rooms = getRooms(); // pakai function JSON tadi
+
+    foreach ($rooms as &$room) {
+        if (($room['code'] ?? '') === $code) {
+            $room['member'] = ($room['member'] ?? 0) + 1;
+
+            saveRooms($rooms);
+
+            return redirect()->route('chat.room', $room['slug']);
+        }
+    }
+
+    return back()->with('error', 'Kode room tidak ditemukan');
+})->name('room.join');
+
+
+
+/*
+|--------------------------------------------------------------------------
 | CHAT
 |--------------------------------------------------------------------------
 */
