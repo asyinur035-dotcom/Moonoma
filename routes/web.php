@@ -198,7 +198,7 @@ Route::get('/invite', function () {
     return view('invite');
 })->name('invite.page');
 
-Route::post('/invite/join', function (\Illuminate\Http\Request $request) {
+Route::post('/invite/join', function (Request $request) {
     $code = strtoupper($request->code);
     $rooms = getRooms(); // pakai function JSON tadi
 
@@ -226,15 +226,15 @@ Route::post('/invite/join', function (\Illuminate\Http\Request $request) {
 Route::get('/chat', fn () => redirect()->route('rooms'))->name('chat');
 
 Route::get('/chat/{room}', function ($room) {
-    $rooms = session('rooms', []);
-    $messages = session("messages.$room", []);
+    $rooms = getRooms();
 
-    $roomData = $rooms[$room] ?? [
-        'id' => $room,
-        'name' => $room,
-        'topic' => '-',
-        'status' => 'Public',
-    ];
+    $roomData = collect($rooms)->firstWhere('slug', $room);
+
+    if (!$roomData) {
+        return redirect()->route('rooms')->with('error', 'Room tidak ditemukan');
+    }
+
+    $messages = session("messages.$room", []);
 
     return view('chat', [
         'room' => $room,
@@ -260,7 +260,6 @@ Route::post('/chat/{room}/send', function (Request $request, $room) {
 Route::get('/chat/{room}/invite', function ($room) {
     return view('invite', compact('room'));
 })->name('chat.invite');
-
 
 /*
 |--------------------------------------------------------------------------
