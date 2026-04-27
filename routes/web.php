@@ -92,8 +92,34 @@ Route::post('/profile/save', function (Request $request) {
 |--------------------------------------------------------------------------
 */
 
+function roomsFilePath()
+{
+    return storage_path('app/data/rooms.json');
+}
+
+function getRooms()
+{
+    $file = roomsFilePath();
+
+    if (!file_exists($file)) {
+        file_put_contents($file, json_encode([]));
+    }
+
+    $data = json_decode(file_get_contents($file), true);
+
+    return is_array($data) ? $data : [];
+}
+
+function saveRooms($rooms)
+{
+    file_put_contents(
+        roomsFilePath(),
+        json_encode(array_values($rooms), JSON_PRETTY_PRINT)
+    );
+}
+
 Route::get('/rooms', function () {
-    $rooms = session('rooms', []);
+    $rooms = getRooms();
 
     return view('rooms', compact('rooms'));
 })->name('rooms');
@@ -101,12 +127,15 @@ Route::get('/rooms', function () {
 Route::view('/rooms/create', 'create-room')->name('room.create');
 
 Route::post('/rooms/store', function (Request $request) {
-    $rooms = session('rooms', []);
+    $rooms = getRooms();
 
-    $slug = strtolower(str_replace(' ', '-', $request->name));
+    $slug = strtolower(trim($request->name));
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
+    $slug = trim($slug, '-');
 
-    $rooms[$slug] = [
-        'id' => $slug,
+    $rooms[] = [
+        'id' => uniqid('room_'),
+        'slug' => $slug,
         'name' => $request->name,
         'topic' => $request->topic,
         'desc' => $request->topic,
@@ -115,16 +144,18 @@ Route::post('/rooms/store', function (Request $request) {
         'status' => $request->status ?? 'Public',
         'member' => 1,
         'code' => strtoupper(substr(md5($request->name . time()), 0, 6)),
+        'created_by' => session('email', 'guest'),
+        'created_at' => now()->toDateTimeString(),
     ];
 
-    session(['rooms' => $rooms]);
+    saveRooms($rooms);
 
     return redirect()->route('rooms');
 })->name('room.store');
 
 Route::get('/search', function (Request $request) {
     $query = $request->q;
-    $rooms = session('rooms', []);
+    $rooms = getRooms();
 
     if ($query) {
         $rooms = array_filter($rooms, function ($room) use ($query) {
@@ -140,43 +171,21 @@ Route::get('/search', function (Request $request) {
     return view('search', compact('rooms', 'query'));
 })->name('search');
 
-Route::post('/rooms/join/{room}', function ($room) {
-    $rooms = session('rooms', []);
+Route::post('/rooms/join/{slug}', function ($slug) {
+    $rooms = getRooms();
 
-    if (isset($rooms[$room])) {
-        $rooms[$room]['member'] = ($rooms[$room]['member'] ?? 0) + 1;
-        session(['rooms' => $rooms]);
+    foreach ($rooms as &$room) {
+        if (($room['slug'] ?? '') === $slug) {
+            $room['member'] = ($room['member'] ?? 0) + 1;
 
-        return redirect()->route('chat.room', $room);
-    }
-
-    return back()->with('error', 'Room tidak ditemukan');
-})->name('room.join.direct');
-
-
-/*
-|--------------------------------------------------------------------------
-| INVITE
-|--------------------------------------------------------------------------
-*/
-
-Route::view('/invite', 'invite')->name('invite.page');
-
-Route::post('/invite/join', function (Request $request) {
-    $code = strtoupper($request->code);
-    $rooms = session('rooms', []);
-
-    foreach ($rooms as $slug => $room) {
-        if (($room['code'] ?? '') === $code) {
-            $rooms[$slug]['member'] = ($rooms[$slug]['member'] ?? 0) + 1;
-            session(['rooms' => $rooms]);
+            saveRooms($rooms);
 
             return redirect()->route('chat.room', $slug);
         }
     }
 
-    return back()->with('error', 'Kode room tidak ditemukan');
-})->name('room.join');
+    return back()->with('error', 'Room tidak ditemukan');
+})->name('room.join.direct');
 
 
 /*
