@@ -149,13 +149,23 @@ body{
 
     <!-- PROFILE -->
     <div class="bottom-profile">
-        <div class="mini-avatar">Un</div>
-        <div>
-            <div style="font-size:12px;">Unknown</div>
-            <div style="font-size:10px;color:#888;">Designer</div>
-        </div>
+    <div class="mini-avatar">
+        @if(session('photo'))
+            <img src="{{ asset('storage/' . session('photo')) }}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+        @else
+            {{ strtoupper(substr(session('name', 'U'), 0, 1)) }}
+        @endif
     </div>
 
+    <div>
+        <div style="font-size:12px;">
+            {{ session('name', 'Unknown') }}
+        </div>
+
+        <div style="font-size:10px;color:#888;">
+            {{ session('role', 'Designer') }}
+        </div>
+    </div>
 </div>
 
 <!-- CONTENT -->
