@@ -87,66 +87,42 @@
 }
 </style>
 
-<div id="chatBox" class="chat-box"></div>
+<div id="chatBox" class="chat-box">
+    @foreach($messages as $m)
+        @php
+            $timeStr = $m['time'] ?? '';
+            $formattedTime = $timeStr;
+            if ($timeStr && strpos($timeStr, '-') !== false) {
+                try {
+                    $date = \Carbon\Carbon::parse($timeStr);
+                    if ($date->isToday()) {
+                        $formattedTime = $date->format('H:i');
+                    } elseif ($date->isYesterday()) {
+                        $formattedTime = 'Yesterday ' . $date->format('H:i');
+                    } else {
+                        $formattedTime = $date->format('d M, H:i');
+                    }
+                } catch (\Exception $e) {}
+            }
+        @endphp
+        <div class="chat-item {{ ($m['sender'] ?? '') === session('name', 'User') ? 'me' : 'other' }}">
+            <div class="msg-name">
+                {{ $m['sender'] ?? 'User' }} <span style="font-size: 9px; color: #555;">{{ $formattedTime }}</span>
+            </div>
+            <div class="message">{{ $m['message'] ?? '' }}</div>
+        </div>
+    @endforeach
+</div>
 
 <form method="POST" action="{{ route('chat.send', $room) }}" class="chat-input">
     @csrf
-    <input type="text" name="message" placeholder="Message..." required>
-    <button class="send-btn">➤</button>
+    <input type="text" name="message" placeholder="Message..." required autocomplete="off">
+    <button type="submit" class="send-btn">➤</button>
 </form>
 
 <script>
-let room = currentRoom; // 🔥 FIX
-let chats = JSON.parse(localStorage.getItem('roomChats')) || {};
-let currentUser = "User";
-
-/* RENDER */
-function renderChat(){
     let box = document.getElementById('chatBox');
-    box.innerHTML = '';
-
-    let roomChat = chats[room] || [];
-
-    roomChat.forEach(m => {
-        let isMe = m.user === currentUser;
-
-        box.innerHTML += `
-            <div class="chat-item ${isMe ? 'me' : 'other'}">
-                <div class="msg-name">${m.user}</div>
-                <div class="message">${m.text}</div>
-            </div>
-        `;
-    });
-
-    box.scrollTop = box.scrollHeight;
-}
-
-/* SEND */
-function sendMsg(){
-    let input = document.getElementById('msgInput');
-    let text = input.value.trim();
-    if(!text) return;
-
-    if(!chats[room]) chats[room] = [];
-
-    chats[room].push({
-        user: currentUser,
-        text: text
-    });
-
-    localStorage.setItem('roomChats', JSON.stringify(chats));
-
-    input.value = '';
-    renderChat();
-}
-
-/* ENTER KEY SEND */
-document.getElementById('msgInput').addEventListener('keypress', function(e){
-    if(e.key === 'Enter'){
-        sendMsg();
+    if (box) {
+        box.scrollTop = box.scrollHeight;
     }
-});
-
-/* INIT */
-renderChat();
 </script>

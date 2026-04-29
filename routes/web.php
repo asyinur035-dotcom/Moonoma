@@ -25,11 +25,28 @@ Route::post('/login', function (Request $request) {
         'password.required' => 'Password wajib diisi.',
     ]);
 
+    $users = getUsers();
+    $foundUser = null;
+
+    foreach ($users as $user) {
+        if ($user['email'] === $request->email && Illuminate\Support\Facades\Hash::check($request->password, $user['password'])) {
+            $foundUser = $user;
+            break;
+        }
+    }
+
+    if (!$foundUser) {
+        return back()->withErrors(['email' => 'Email atau password salah'])->withInput();
+    }
+
+    $role = $foundUser['email'] === 'moonomaproject@gmail.com' ? 'admin' : ($foundUser['role'] ?? 'Designer');
+
     session([
         'is_login' => true,
-        'email' => $request->email,
-        'name' => session('name', 'User'),
-        'role' => session('role', 'Member'),
+        'email' => $foundUser['email'],
+        'name' => $foundUser['name'],
+        'role' => $role,
+        'avatar' => $foundUser['avatar'] ?? null,
     ]);
 
     return redirect()->route('home');
@@ -49,6 +66,13 @@ Route::post('/register', function (Request $request) {
         'password.required' => 'Password wajib diisi.',
         'password.min' => 'Password minimal 6 karakter.',
     ]);
+
+    $users = getUsers();
+    foreach ($users as $user) {
+        if ($user['email'] === $request->email) {
+            return back()->withErrors(['email' => 'Email sudah terdaftar.'])->withInput();
+        }
+    }
 
     $otp = rand(100000, 999999);
 
@@ -86,10 +110,27 @@ Route::post('/verification', function (Request $request) {
     }
 
     if (session('otp_type') === 'register') {
-        session([
-            'name' => session('register_name'),
-            'email' => session('register_email'),
-        ]);
+        $users = getUsers();
+        
+        $emailExists = false;
+        foreach ($users as $user) {
+            if ($user['email'] === session('register_email')) {
+                $emailExists = true;
+                break;
+            }
+        }
+
+        if (!$emailExists) {
+            $users[] = [
+                'id' => uniqid('user_'),
+                'name' => session('register_name'),
+                'email' => session('register_email'),
+                'password' => Illuminate\Support\Facades\Hash::make(session('register_password')),
+                'role' => 'Designer',
+                'avatar' => null,
+            ];
+            saveUsers($users);
+        }
 
         session()->forget([
             'register_email',
@@ -101,7 +142,7 @@ Route::post('/verification', function (Request $request) {
 
         return redirect()
             ->route('login')
-            ->with('success', 'Verifikasi berhasil! Silakan login.');
+            ->with('success', 'Verifikasi berhasil! Akun sudah dibuat, silakan login.');
     }
 
     if (session('otp_type') === 'reset') {
@@ -199,11 +240,69 @@ Route::get('/logout', function () {
 
 /*
 |--------------------------------------------------------------------------
+| JSON DATABASE HELPERS
+|--------------------------------------------------------------------------
+*/
+
+function jsonFilePath($filename)
+{
+    $path = storage_path('app/data/' . $filename . '.json');
+    if (!file_exists(dirname($path))) {
+        mkdir(dirname($path), 0755, true);
+    }
+    if (!file_exists($path)) {
+        file_put_contents($path, json_encode([]));
+    }
+    return $path;
+}
+
+function getUsers()
+{
+    $data = json_decode(file_get_contents(jsonFilePath('users')), true);
+    return is_array($data) ? $data : [];
+}
+
+function saveUsers($users)
+{
+    file_put_contents(jsonFilePath('users'), json_encode(array_values($users), JSON_PRETTY_PRINT));
+}
+
+function getChats()
+{
+    $data = json_decode(file_get_contents(jsonFilePath('chats')), true);
+    return is_array($data) ? $data : [];
+}
+
+function saveChats($chats)
+{
+    file_put_contents(jsonFilePath('chats'), json_encode($chats, JSON_PRETTY_PRINT));
+}
+
+/*
+|--------------------------------------------------------------------------
 | HOME
 |--------------------------------------------------------------------------
 */
 
-Route::view('/home', 'home')->name('home');
+Route::get('/home', function () {
+    $rooms = getRooms();
+    $userName = session('name');
+
+    $roomsJoined = 0;
+    foreach ($rooms as $room) {
+        $joined = $room['joined_users'] ?? [];
+        $names = array_column($joined, 'name');
+        // handle old string format too
+        if (empty($names)) {
+            $names = array_filter($joined, 'is_string');
+        }
+        if (in_array($userName, $names)) {
+            $roomsJoined++;
+        }
+    }
+
+    return view('home', compact('roomsJoined'));
+})->name('home');
 Route::view('/home/edit', 'home-edit')->name('home.edit');
 
 Route::post('/profile/save', function (Request $request) {
@@ -266,6 +365,9 @@ Route::post('/rooms/store', function (Request $request) {
     $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
     $slug = trim($slug, '-');
 
+    $roomCode = strtoupper(substr(md5($request->name . time()), 0, 6));
+    $status = $request->status ?? 'Public';
+
     $rooms[] = [
         'id' => uniqid('room_'),
         'slug' => $slug,
@@ -274,16 +376,21 @@ Route::post('/rooms/store', function (Request $request) {
         'desc' => $request->topic,
         'role_required' => $request->role_required,
         'type' => $request->type ?? 'Coding',
-        'status' => $request->status ?? 'Public',
+        'status' => $status,
         'member' => 1,
-        'code' => strtoupper(substr(md5($request->name . time()), 0, 6)),
+        'code' => $roomCode,
         'created_by' => session('email', 'guest'),
         'created_at' => now()->toDateTimeString(),
     ];
 
     saveRooms($rooms);
 
-    return redirect()->route('rooms');
+    // If private, show the room code to the creator
+    if ($status === 'Private') {
+        return redirect()->route('rooms')->with('room_created_private', true)->with('room_code', $roomCode)->with('room_name', $request->name);
+    }
+
+    return redirect()->route('rooms')->with('success', 'Room berhasil dibuat!');
 })->name('room.store');
 
 Route::get('/search', function (Request $request) {
@@ -309,12 +416,45 @@ Route::post('/rooms/join/{slug}', function ($slug) {
 
     foreach ($rooms as &$room) {
         if (($room['slug'] ?? '') === $slug) {
+            if (in_array(session('name'), $room['banned_users'] ?? [])) {
+                return back()->with('error', 'Anda telah di-kick dari room ini dan tidak bisa bergabung lagi.');
+            }
+
             $userRole = session('role', session('user_role', ''));
-            if (!empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
+
+            $isAlreadyJoined = false;
+            $joined = $room['joined_users'] ?? [];
+            foreach ($joined as $u) {
+                $uName = is_array($u) ? ($u['name'] ?? '') : $u;
+                if ($uName === session('name')) {
+                    $isAlreadyJoined = true;
+                    break;
+                }
+            }
+
+            // Private room: validate code (admin bypasses or user already joined)
+            if ($userRole !== 'admin' && ($room['status'] ?? 'Public') === 'Private' && !$isAlreadyJoined) {
+                $inputCode = strtoupper(trim(request('room_code', '')));
+                if ($inputCode !== ($room['code'] ?? '')) {
+                    return back()->with('error', 'Kode room salah! Silakan cek kembali kode yang diberikan.');
+                }
+            }
+
+            if ($userRole !== 'admin' && !empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
                 return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
             }
 
             $room['member'] = ($room['member'] ?? 0) + 1;
+
+            $joined = $room['joined_users'] ?? [];
+            $names = array_column($joined, 'name');
+            if (!in_array(session('name'), $names)) {
+                $joined[] = [
+                    'name' => session('name'),
+                    'email' => session('email'),
+                ];
+            }
+            $room['joined_users'] = $joined;
 
             saveRooms($rooms);
 
@@ -324,6 +464,28 @@ Route::post('/rooms/join/{slug}', function ($slug) {
 
     return back()->with('error', 'Room tidak ditemukan');
 })->name('room.join.direct');
+
+Route::post('/rooms/{slug}/delete', function ($slug) {
+    if (session('role') !== 'admin') {
+        return back()->with('error', 'Akses ditolak. Anda bukan admin.');
+    }
+
+    // Delete room from rooms.json
+    $rooms = getRooms();
+    $rooms = array_filter($rooms, function($r) use ($slug) {
+        return ($r['slug'] ?? '') !== $slug;
+    });
+    saveRooms($rooms);
+
+    // Delete chats for this room
+    $chats = getChats();
+    if (isset($chats[$slug])) {
+        unset($chats[$slug]);
+        saveChats($chats);
+    }
+
+    return redirect()->route('rooms')->with('success', 'Room berhasil dihapus.');
+})->name('room.delete');
 
 
 /*
@@ -346,12 +508,26 @@ Route::post('/invite/join', function (Request $request) {
 
     foreach ($rooms as &$room) {
         if (($room['code'] ?? '') === $code) {
+            if (in_array(session('name'), $room['banned_users'] ?? [])) {
+                return back()->with('error', 'Anda telah di-kick dari room ini dan tidak bisa bergabung lagi.');
+            }
+
             $userRole = session('role', session('user_role', ''));
-            if (!empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
+            if ($userRole !== 'admin' && !empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
                 return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
             }
 
             $room['member'] = ($room['member'] ?? 0) + 1;
+
+            $joined = $room['joined_users'] ?? [];
+            $names = array_column($joined, 'name');
+            if (!in_array(session('name'), $names)) {
+                $joined[] = [
+                    'name' => session('name'),
+                    'email' => session('email'),
+                ];
+            }
+            $room['joined_users'] = $joined;
 
             saveRooms($rooms);
 
@@ -380,7 +556,12 @@ Route::get('/chat/{room}', function ($room) {
         return redirect()->route('rooms')->with('error', 'Room tidak ditemukan');
     }
 
-    $messages = session("messages.$room", []);
+    if (in_array(session('name'), $roomData['banned_users'] ?? [])) {
+        return redirect()->route('rooms')->with('error', 'Anda telah di-kick dari room ini.');
+    }
+
+    $allChats = getChats();
+    $messages = $allChats[$room] ?? [];
 
     return view('chat', [
         'room' => $room,
@@ -394,18 +575,56 @@ Route::post('/chat/{room}/send', function (Request $request, $room) {
         'message' => 'required',
     ]);
 
-    $messages = session("messages.$room", []);
+    $allChats = getChats();
+    $messages = $allChats[$room] ?? [];
 
     $messages[] = [
         'sender' => session('name', 'User'),
         'message' => $request->message,
-        'time' => now()->format('H:i'),
+        'time' => now()->toDateTimeString(),
     ];
 
-    session(["messages.$room" => $messages]);
+    $allChats[$room] = $messages;
+    saveChats($allChats);
 
     return back();
 })->name('chat.send');
+
+Route::post('/chat/{room}/kick', function (Request $request, $room) {
+    if (session('role') !== 'admin') {
+        return back()->with('error', 'Akses ditolak.');
+    }
+
+    $targetUser = $request->target_user;
+    if (!$targetUser) return back();
+
+    $rooms = getRooms();
+    foreach ($rooms as &$r) {
+        if (($r['slug'] ?? '') === $room) {
+            // Add to banned list
+            $banned = $r['banned_users'] ?? [];
+            if (!in_array($targetUser, $banned)) {
+                $banned[] = $targetUser;
+            }
+            $r['banned_users'] = $banned;
+
+            // Remove from joined_users list
+            $joined = $r['joined_users'] ?? [];
+            $joined = array_filter($joined, function($u) use ($targetUser) {
+                $name = is_array($u) ? ($u['name'] ?? '') : $u;
+                return $name !== $targetUser;
+            });
+            $r['joined_users'] = array_values($joined);
+
+            break;
+        }
+    }
+    saveRooms($rooms);
+
+    return back()->with('success', "User $targetUser berhasil di-kick.");
+})->name('chat.kick');
+
+
 
 Route::get('/chat/{room}/invite', function ($room) {
     return view('invite', compact('room'));
@@ -458,12 +677,14 @@ Route::get('/auth/google', function () {
 Route::get('/auth/google/callback', function () {
     $googleUser = Socialite::driver('google')->user();
 
+    $role = $googleUser->getEmail() === 'moonomaproject@gmail.com' ? 'admin' : 'Member';
+
     session([
         'is_login' => true,
         'name' => $googleUser->getName(),
         'email' => $googleUser->getEmail(),
         'google_id' => $googleUser->getId(),
-        'role' => 'Member',
+        'role' => $role,
     ]);
 
     return redirect()->route('home');

@@ -130,8 +130,6 @@ body{
         <div class="menu">
             <a href="{{ route('home') }}" class="{{ request()->routeIs('home*') ? 'active' : '' }}">Home</a>
             <a href="{{ route('rooms') }}" class="{{ request()->routeIs('rooms*') ? 'active' : '' }}">Rooms</a>
-            <a href="{{ route('search') }}" class="{{ request()->routeIs('search*') ? 'active' : '' }}">Search</a>
-            <a href="{{ route('chat') }}" class="{{ request()->routeIs('chat*') ? 'active' : '' }}">Room Chat</a>
             <a href="{{ route('profile') }}" class="{{ request()->routeIs('profile*') ? 'active' : '' }}">Profile</a>
         </div>
 
@@ -161,6 +159,18 @@ body{
 <!-- CONTENT -->
 <div class="main">
     <div class="container">
+        @if(session('success'))
+            <div style="background:#3E5641; color:#fff; padding:10px 15px; border-radius:8px; margin-bottom:20px;">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div style="background:#8b3a3a; color:#fff; padding:10px 15px; border-radius:8px; margin-bottom:20px;">
+                {{ session('error') }}
+            </div>
+        @endif
+
         @yield('content')
     </div>
 </div>

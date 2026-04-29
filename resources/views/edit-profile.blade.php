@@ -315,6 +315,7 @@ function saveProfile(e){
     let name = document.getElementById('nameInput').value;
     let select = document.getElementById('roleSelect').value;
     let custom = document.getElementById('customRole').value;
+    let avatar = document.getElementById('preview').src;
 
     let role = (select === 'other') ? custom : select;
 
@@ -324,7 +325,7 @@ function saveProfile(e){
             "Content-Type":"application/json",
             "X-CSRF-TOKEN":"{{ csrf_token() }}"
         },
-        body:JSON.stringify({name, role})
+        body:JSON.stringify({name, role, avatar})
     }).then(()=>{
         window.location.href="{{ route('profile') }}";
     });

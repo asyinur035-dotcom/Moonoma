@@ -252,7 +252,7 @@
         <div class="card stats-card">
             <div class="stat">
                 <span>Room joined</span>
-                <b>0</b>
+                <b>{{ $roomsJoined ?? 0 }}</b>
             </div>
             <div class="stat">
                 <span>Skill teach</span>

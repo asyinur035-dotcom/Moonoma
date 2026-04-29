@@ -193,7 +193,10 @@
                 <div class="room-sub">{{ $r['desc'] }}</div>
                 <div class="room-sub">{{ $r['type'] }}</div>
 
-                <button class="join-btn">Join</button>
+                <form action="{{ route('room.join.direct', !empty($r['slug']) ? $r['slug'] : 'invalid') }}" method="POST" style="margin:0;">
+                    @csrf
+                    <button type="submit" class="join-btn">Join</button>
+                </form>
             </div>
         @empty
             <div class="empty">
