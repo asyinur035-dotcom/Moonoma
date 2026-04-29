@@ -149,10 +149,10 @@ body{
 
     <!-- PROFILE -->
     <div class="bottom-profile">
-        <div class="mini-avatar">Un</div>
+        <div class="mini-avatar">{{ strtoupper(substr(session('name', session('user_name', 'Unknown')), 0, 2)) }}</div>
         <div>
-            <div style="font-size:12px;">Unknown</div>
-            <div style="font-size:10px;color:#888;">Designer</div>
+            <div style="font-size:12px;">{{ session('name', session('user_name', 'Unknown')) }}</div>
+            <div style="font-size:10px;color:#888;">{{ session('role', session('user_role', 'Designer')) }}</div>
         </div>
     </div>
 

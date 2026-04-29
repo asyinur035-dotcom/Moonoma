@@ -73,7 +73,15 @@
 
 <input name="name" class="input" placeholder="Room name">
 <input name="topic" class="input" placeholder="Topic title">
-<input name="role" class="input" placeholder="Role required">
+<select name="role_required" class="input" required>
+    <option value="" disabled selected>Select role required</option>
+    <option value="Designer">Designer</option>
+    <option value="UI/UX">UI/UX</option>
+    <option value="Frontend">Frontend</option>
+    <option value="Backend">Backend</option>
+    <option value="Mobile Dev">Mobile Dev</option>
+    <option value="Other">Other</option>
+</select>
 
 <div class="row">
     <select name="type" class="input">

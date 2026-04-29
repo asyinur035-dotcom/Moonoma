@@ -309,6 +309,11 @@ Route::post('/rooms/join/{slug}', function ($slug) {
 
     foreach ($rooms as &$room) {
         if (($room['slug'] ?? '') === $slug) {
+            $userRole = session('role', session('user_role', ''));
+            if (!empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
+                return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
+            }
+
             $room['member'] = ($room['member'] ?? 0) + 1;
 
             saveRooms($rooms);
@@ -341,6 +346,11 @@ Route::post('/invite/join', function (Request $request) {
 
     foreach ($rooms as &$room) {
         if (($room['code'] ?? '') === $code) {
+            $userRole = session('role', session('user_role', ''));
+            if (!empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
+                return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
+            }
+
             $room['member'] = ($room['member'] ?? 0) + 1;
 
             saveRooms($rooms);
