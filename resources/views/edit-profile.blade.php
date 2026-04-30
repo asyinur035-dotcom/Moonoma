@@ -208,32 +208,37 @@ select.input option{
 
             <div>
                 <div class="label">Username</div>
-                <input class="input" value="{{ strtolower(str_replace(' ', '', session('name','username'))) }}">
+                <input class="input" id="usernameInput" value="{{ session('username', strtolower(str_replace(' ', '', session('name', 'username')))) }}">
             </div>
 
             <div>
                 <div class="label">Name</div>
-                <input class="input" value="{{ session('name') }}">
+                <input class="input" id="nameDisplayInput" value="{{ session('name') }}">
             </div>
 
             <div>
                 <div class="label">Role</div>
-                <input class="input" value="{{ session('role') }}">
+                <input class="input" id="roleDisplayInput" value="{{ session('role') }}" readonly>
             </div>
 
             <div>
                 <div class="label">Skill teach</div>
-                <input class="input" placeholder="Example: Web, UI/UX">
+                <input class="input" id="skillTeachInput" placeholder="Example: Web, UI/UX" value="{{ $profile && is_array($profile['skill_teach']) ? implode(', ', $profile['skill_teach']) : '' }}">
             </div>
 
             <div>
                 <div class="label">City</div>
-                <input class="input" placeholder="City">
+                <input class="input" id="cityInput" placeholder="City" value="{{ $profile['city'] ?? '' }}">
+            </div>
+
+            <div>
+                <div class="label">Skill learn</div>
+                <input class="input" id="skillLearnInput" placeholder="Example: Python, React" value="{{ $profile && is_array($profile['skill_learn']) ? implode(', ', $profile['skill_learn']) : '' }}">
             </div>
 
             <div>
                 <div class="label">Availability</div>
-                <input class="input" placeholder="Available">
+                <input class="input" id="availabilityInput" placeholder="Available" value="{{ $profile['availability'] ?? '' }}">
             </div>
 
             <div class="cv-wrapper">
@@ -241,11 +246,11 @@ select.input option{
 
                 <div class="cv-box">
                     <label class="cv-upload">
-                        <input type="file" accept="application/pdf" onchange="previewCV(event)">
+                        <input type="file" id="cvInput" accept="application/pdf" onchange="previewCV(event)">
                         Upload CV (PDF)
                     </label>
 
-                    <p id="cvName" class="cv-name">No file selected</p>
+                    <p id="cvName" class="cv-name">{{ ($profile['cv_path'] ?? null) ? basename($profile['cv_path']) : 'No file selected' }}</p>
                 </div>
             </div>
 
@@ -316,18 +321,44 @@ function saveProfile(e){
     let select = document.getElementById('roleSelect').value;
     let custom = document.getElementById('customRole').value;
     let avatar = document.getElementById('preview').src;
+    let username = document.getElementById('usernameInput').value;
+    let skill_teach = document.getElementById('skillTeachInput').value;
+    let skill_learn = document.getElementById('skillLearnInput').value;
+    let city = document.getElementById('cityInput').value;
+    let availability = document.getElementById('availabilityInput').value;
+    let cvFile = document.getElementById('cvInput').files[0];
 
     let role = (select === 'other') ? custom : select;
+
+    let formData = new FormData();
+    formData.append('name', name);
+    formData.append('role', role);
+    formData.append('avatar', avatar);
+    formData.append('username', username);
+    formData.append('skill_teach', skill_teach);
+    formData.append('skill_learn', skill_learn);
+    formData.append('city', city);
+    formData.append('availability', availability);
+    if(cvFile) {
+        formData.append('cv', cvFile);
+    }
 
     fetch("{{ route('profile.save') }}", {
         method:"POST",
         headers:{
-            "Content-Type":"application/json",
             "X-CSRF-TOKEN":"{{ csrf_token() }}"
         },
-        body:JSON.stringify({name, role, avatar})
-    }).then(()=>{
-        window.location.href="{{ route('profile') }}";
+        body: formData
+    }).then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            window.location.href="{{ route('profile') }}";
+        } else {
+            alert(data.message || 'Gagal menyimpan profil');
+        }
+    }).catch(err => {
+        console.error(err);
+        alert('Terjadi kesalahan');
     });
 }
 </script>

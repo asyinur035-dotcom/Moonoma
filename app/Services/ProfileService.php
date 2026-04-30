@@ -57,8 +57,8 @@ class ProfileService
 
         $updateData = [
             'bio' => $data['bio'] ?? $profile['bio'],
-            'skill_teach' => $data['skill_teach'] ?? $profile['skill_teach'],
-            'skill_learn' => $data['skill_learn'] ?? $profile['skill_learn'],
+            'skill_teach' => is_string($data['skill_teach'] ?? null) ? array_map('trim', explode(',', $data['skill_teach'])) : ($data['skill_teach'] ?? $profile['skill_teach']),
+            'skill_learn' => is_string($data['skill_learn'] ?? null) ? array_map('trim', explode(',', $data['skill_learn'])) : ($data['skill_learn'] ?? $profile['skill_learn']),
             'school_name' => $data['school_name'] ?? $profile['school_name'],
             'class_name' => $data['class_name'] ?? $profile['class_name'],
             'city' => $data['city'] ?? $profile['city'],

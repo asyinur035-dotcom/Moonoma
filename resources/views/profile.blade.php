@@ -210,19 +210,27 @@
             <div>
                 <div class="label">Skill teach</div>
                 <div class="value">
-                    <span class="empty">No skills yet</span>
+                    @if($profile && !empty($profile['skill_teach']))
+                        {{ implode(', ', $profile['skill_teach']) }}
+                    @else
+                        <span class="empty">No skills yet</span>
+                    @endif
                 </div>
             </div>
 
             <div>
                 <div class="label">City or region</div>
-                <div class="value">-</div>
+                <div class="value">{{ $profile['city'] ?? '-' }}</div>
             </div>
 
             <div>
                 <div class="label">Skill learn</div>
                 <div class="value">
-                    <span class="empty">No skills yet</span>
+                    @if($profile && !empty($profile['skill_learn']))
+                        {{ implode(', ', $profile['skill_learn']) }}
+                    @else
+                        <span class="empty">No skills yet</span>
+                    @endif
                 </div>
             </div>
 
@@ -231,12 +239,14 @@
                 <div class="label">CV</div>
 
                 <div class="cv-box">
-                    <label class="cv-upload">
-                        <input type="file" accept="application/pdf" onchange="previewCV(event)">
-                        Upload CV (PDF)
-                    </label>
-
-                    <p id="cvName" class="cv-name">No file selected</p>
+                    @if($profile && $profile['cv_path'])
+                        <a href="{{ asset($profile['cv_path']) }}" class="cv-upload" target="_blank" style="text-decoration:none;">
+                            View/Download CV (PDF)
+                        </a>
+                        <p class="cv-name">{{ basename($profile['cv_path']) }}</p>
+                    @else
+                        <span class="empty">No CV uploaded</span>
+                    @endif
                 </div>
             </div>
 

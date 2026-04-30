@@ -97,9 +97,13 @@
                     @endphp
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #0d0f0d; border: 1px solid {{ $isAdmin ? '#c9a227' : '#3E5641' }}; border-radius: 10px; {{ $isAdmin ? 'box-shadow: 0 0 8px rgba(201,162,39,0.2);' : '' }}">
                         <div style="display:flex; align-items:center; gap:10px;">
-                            {{-- Avatar initials --}}
-                            <div style="width:32px; height:32px; border-radius:50%; background:{{ $isAdmin ? 'linear-gradient(135deg, #c9a227, #f5d679)' : '#1f2d22' }}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:{{ $isAdmin ? '#1a1100' : '#8fba97' }}; flex-shrink:0;">
-                                {{ $initials }}
+                            {{-- Avatar initials or image --}}
+                            <div style="width:32px; height:32px; border-radius:50%; background:{{ $isAdmin ? 'linear-gradient(135deg, #c9a227, #f5d679)' : '#1f2d22' }}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:{{ $isAdmin ? '#1a1100' : '#8fba97' }}; flex-shrink:0; overflow:hidden;">
+                                @if(isset($usersMap[$pEmail]['avatar']) && $usersMap[$pEmail]['avatar'])
+                                    <img src="{{ $usersMap[$pEmail]['avatar'] }}" style="width:100%; height:100%; object-fit:cover;">
+                                @else
+                                    {{ $initials }}
+                                @endif
                             </div>
                             <div>
                                 <div style="display:flex; align-items:center; gap:6px;">

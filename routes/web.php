@@ -43,6 +43,7 @@ Route::post('/login', function (Request $request) {
 
     session([
         'is_login' => true,
+        'user_id' => $foundUser['id'],
         'email' => $foundUser['email'],
         'name' => $foundUser['name'],
         'role' => $role,
@@ -121,8 +122,16 @@ Route::post('/verification', function (Request $request) {
         }
 
         if (!$emailExists) {
+            $maxId = 0;
+            foreach ($users as $u) {
+                if (isset($u['id']) && is_numeric($u['id']) && $u['id'] > $maxId) {
+                    $maxId = $u['id'];
+                }
+            }
+            $newId = $maxId + 1;
+
             $users[] = [
-                'id' => uniqid('user_'),
+                'id' => $newId,
                 'name' => session('register_name'),
                 'email' => session('register_email'),
                 'password' => Illuminate\Support\Facades\Hash::make(session('register_password')),
@@ -306,9 +315,69 @@ Route::get('/home', function () {
 Route::view('/home/edit', 'home-edit')->name('home.edit');
 
 Route::post('/profile/save', function (Request $request) {
+    $userId = session('user_id');
+    
+    // Fallback for existing sessions that don't have user_id yet
+    if (!$userId && session('email')) {
+        $users = getUsers();
+        foreach ($users as $u) {
+            if ($u['email'] === session('email')) {
+                $userId = $u['id'];
+                session(['user_id' => $userId]);
+                break;
+            }
+        }
+    }
+
+    if (!$userId) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized. Please re-login.'], 401);
+    }
+
+    $profileService = app(App\Services\ProfileService::class);
+    
+    // Handle Avatar if it's a file or base64 (though JS sends it as base64 in preview)
+    // For now we keep it as it is in the session/user record
+    $users = getUsers();
+    foreach ($users as &$u) {
+        if ($u['id'] == $userId) {
+            $u['name'] = $request->name;
+            $u['role'] = $request->role;
+            $u['avatar'] = $request->avatar;
+            saveUsers($users);
+            break;
+        }
+    }
+
+    $cvPath = null;
+    if ($request->hasFile('cv')) {
+        $request->validate(['cv' => 'mimes:pdf|max:2048']);
+        $file = $request->file('cv');
+        $filename = 'cv_' . $userId . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $file->storeAs('public/cv', $filename);
+        $cvPath = 'storage/cv/' . $filename;
+    }
+
+    $profileData = [
+        'city' => $request->city,
+        'skill_teach' => $request->skill_teach,
+        'skill_learn' => $request->skill_learn,
+        'availability' => $request->availability,
+    ];
+
+    if ($cvPath) {
+        $profileData['cv_path'] = $cvPath;
+    }
+
+    $profileService->updateByUserId($userId, $profileData);
+
+    // Update session
     session([
         'name' => $request->name,
         'role' => $request->role,
+        'avatar' => $request->avatar,
+        'city' => $request->city,
+        'skill_teach' => is_string($request->skill_teach) ? explode(',', $request->skill_teach) : $request->skill_teach,
+        'skill_learn' => is_string($request->skill_learn) ? explode(',', $request->skill_learn) : $request->skill_learn,
     ]);
 
     return response()->json([
@@ -563,10 +632,17 @@ Route::get('/chat/{room}', function ($room) {
     $allChats = getChats();
     $messages = $allChats[$room] ?? [];
 
+    $users = getUsers();
+    $usersMap = [];
+    foreach ($users as $u) {
+        $usersMap[$u['email']] = $u;
+    }
+
     return view('chat', [
         'room' => $room,
         'roomData' => $roomData,
         'messages' => $messages,
+        'usersMap' => $usersMap,
     ]);
 })->name('chat.room');
 
@@ -638,17 +714,55 @@ Route::get('/chat/{room}/invite', function ($room) {
 */
 
 Route::get('/profile', function () {
+    $userId = session('user_id');
+    
+    if (!$userId && session('email')) {
+        $users = getUsers();
+        foreach ($users as $u) {
+            if ($u['email'] === session('email')) {
+                $userId = $u['id'];
+                session(['user_id' => $userId]);
+                break;
+            }
+        }
+    }
+
+    $profile = null;
+    if ($userId) {
+        $profileService = app(App\Services\ProfileService::class);
+        $profile = $profileService->getByUserId($userId);
+    }
+
     return view('profile', [
         'name' => session('name', 'Your Name'),
         'role' => session('role', 'Your Role'),
         'username' => session('username', 'username'),
-        'city' => session('city', '-'),
-        'skill_teach' => session('skill_teach', []),
-        'skill_learn' => session('skill_learn', []),
+        'profile' => $profile,
     ]);
 })->name('profile');
 
-Route::view('/profile/edit', 'edit-profile')->name('profile.edit');
+Route::get('/profile/edit', function () {
+    $userId = session('user_id');
+
+    if (!$userId && session('email')) {
+        $users = getUsers();
+        foreach ($users as $u) {
+            if ($u['email'] === session('email')) {
+                $userId = $u['id'];
+                session(['user_id' => $userId]);
+                break;
+            }
+        }
+    }
+
+    $profile = null;
+    if ($userId) {
+        $profileService = app(App\Services\ProfileService::class);
+        $profile = $profileService->getByUserId($userId);
+    }
+
+    return view('edit-profile', compact('profile'));
+})->name('profile.edit');
 
 Route::post('/profile/update', function (Request $request) {
     session([
@@ -679,12 +793,43 @@ Route::get('/auth/google/callback', function () {
 
     $role = $googleUser->getEmail() === 'moonomaproject@gmail.com' ? 'admin' : 'Member';
 
+    $users = getUsers();
+    $foundUser = null;
+    foreach ($users as $u) {
+        if ($u['email'] === $googleUser->getEmail()) {
+            $foundUser = $u;
+            break;
+        }
+    }
+
+    if (!$foundUser) {
+        $maxId = 0;
+        foreach ($users as $u) {
+            if (isset($u['id']) && is_numeric($u['id']) && $u['id'] > $maxId) {
+                $maxId = $u['id'];
+            }
+        }
+        $newId = $maxId + 1;
+        $foundUser = [
+            'id' => $newId,
+            'name' => $googleUser->getName(),
+            'email' => $googleUser->getEmail(),
+            'google_id' => $googleUser->getId(),
+            'role' => $role,
+            'avatar' => $googleUser->getAvatar(),
+        ];
+        $users[] = $foundUser;
+        saveUsers($users);
+    }
+
     session([
         'is_login' => true,
+        'user_id' => $foundUser['id'],
         'name' => $googleUser->getName(),
         'email' => $googleUser->getEmail(),
         'google_id' => $googleUser->getId(),
         'role' => $role,
+        'avatar' => $foundUser['avatar'] ?? null,
     ]);
 
     return redirect()->route('home');
