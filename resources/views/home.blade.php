@@ -256,11 +256,11 @@
             </div>
             <div class="stat">
                 <span>Skill teach</span>
-                <b id="teachCount">0</b>
+                <b id="teachCount">{{ count($profile['skill_teach'] ?? []) }}</b>
             </div>
             <div class="stat">
                 <span>Skill learn</span>
-                <b id="learnCount">0</b>
+                <b id="learnCount">{{ count($profile['skill_learn'] ?? []) }}</b>
             </div>
         </div>
 
@@ -269,7 +269,11 @@
                 <div class="card-title">Skill teach</div>
                 <button class="add-btn" onclick="openModal('teach')">+ Add</button>
             </div>
-            <div id="teachBox" class="tags"></div>
+            <div id="teachBox" class="tags">
+                @foreach($profile['skill_teach'] ?? [] as $skill)
+                    <span class="tag">{{ $skill }}</span>
+                @endforeach
+            </div>
         </div>
 
         <div class="card">
@@ -277,7 +281,11 @@
                 <div class="card-title">Skill learn</div>
                 <button class="add-btn" onclick="openModal('learn')">+ Add</button>
             </div>
-            <div id="learnBox" class="tags"></div>
+            <div id="learnBox" class="tags">
+                @foreach($profile['skill_learn'] ?? [] as $skill)
+                    <span class="tag">{{ $skill }}</span>
+                @endforeach
+            </div>
         </div>
 
     </div>
@@ -347,26 +355,54 @@ function saveSkill(){
         return;
     }
 
-    let box = currentType === 'teach'
-        ? document.getElementById('teachBox')
-        : document.getElementById('learnBox');
+    // Save to server
+    fetch("{{ route('profile.add-skill') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": "{{ csrf_token() }}"
+        },
+        body: JSON.stringify({
+            type: currentType,
+            skill: skill
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success){
+            let box = currentType === 'teach'
+                ? document.getElementById('teachBox')
+                : document.getElementById('learnBox');
 
-    let tag = document.createElement('span');
-    tag.className = 'tag';
-    tag.innerText = skill;
+            let tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.innerText = skill;
 
-    box.appendChild(tag);
+            box.appendChild(tag);
 
-    updateCount();
-    closeModal();
+            updateCount();
+            closeModal();
+            
+            // Optional: reset fields
+            document.getElementById('skillSelect').value = '';
+            document.getElementById('customSkill').value = '';
+            document.getElementById('customSkill').style.display = 'none';
+        } else {
+            alert('Gagal menyimpan skill');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Terjadi kesalahan');
+    });
 }
 
 function updateCount(){
     document.getElementById('teachCount').innerText =
-        document.getElementById('teachBox').children.length;
+        document.getElementById('teachBox').querySelectorAll('.tag').length;
 
     document.getElementById('learnCount').innerText =
-        document.getElementById('learnBox').children.length;
+        document.getElementById('learnBox').querySelectorAll('.tag').length;
 }
 </script>
 

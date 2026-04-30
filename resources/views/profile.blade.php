@@ -173,7 +173,11 @@
                 {{ session('name', 'Your Name') }}
             </div>
             <div class="role">
-                {{ session('role', 'Your Role') }}
+                @if(session('email') === 'moonomaproject@gmail.com')
+                    <span style="color:#c9a227; font-weight:700; letter-spacing:1px;">ADMIN</span>
+                @else
+                    {{ session('role', 'Your Role') }}
+                @endif
             </div>
         </div>
 
@@ -200,12 +204,14 @@
                 </div>
             </div>
 
+            @if(session('email') !== 'moonomaproject@gmail.com')
             <div>
                 <div class="label">Role</div>
                 <div class="value">
                     {{ session('role', 'Your Role') }}
                 </div>
             </div>
+            @endif
 
             <div>
                 <div class="label">Skill teach</div>

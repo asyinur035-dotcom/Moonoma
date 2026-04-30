@@ -175,6 +175,7 @@ select.input option{
             </div>
         </div>
 
+        @if(session('email') !== 'moonomaproject@gmail.com')
         <div class="card">
             <input class="input" id="nameInput" value="{{ session('name') }}" placeholder="Name">
 
@@ -196,6 +197,14 @@ select.input option{
                 style="margin-top:10px; display:none;"
             >
         </div>
+        @else
+        <div class="card">
+            <input class="input" id="nameInput" value="{{ session('name') }}" placeholder="Name">
+            <input type="hidden" id="roleSelect" value="admin">
+            <input type="hidden" id="customRole" value="">
+            <div style="margin-top:10px; color:#c9a227; font-weight:700; font-size:14px;">ADMIN ACCOUNT</div>
+        </div>
+        @endif
 
     </div>
 
@@ -216,10 +225,12 @@ select.input option{
                 <input class="input" id="nameDisplayInput" value="{{ session('name') }}">
             </div>
 
+            @if(session('email') !== 'moonomaproject@gmail.com')
             <div>
                 <div class="label">Role</div>
                 <input class="input" id="roleDisplayInput" value="{{ session('role') }}" readonly>
             </div>
+            @endif
 
             <div>
                 <div class="label">Skill teach</div>

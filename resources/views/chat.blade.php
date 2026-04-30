@@ -44,6 +44,92 @@
 .container{
     padding:0 20px;
 }
+
+/* MODAL STYLES */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #0d0f0d;
+    border: 1px solid #3E5641;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 500px;
+    padding: 30px;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.modal-close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 24px;
+    color: #6f8a75;
+    cursor: pointer;
+}
+
+.modal-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.modal-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 3px solid #3E5641;
+    object-fit: cover;
+    margin-bottom: 15px;
+}
+
+.modal-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.modal-label {
+    font-size: 11px;
+    color: #6f8a75;
+    margin-bottom: 4px;
+}
+
+.modal-value {
+    font-size: 13px;
+    color: #fff;
+}
+
+.modal-full {
+    grid-column: span 2;
+    margin-top: 10px;
+}
+
+.modal-cv-btn {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: #3E5641;
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 12px;
+    font-size: 13px;
+    margin-top: 20px;
+}
 </style>
 
 <!-- HEADER -->
@@ -68,6 +154,11 @@
     </div>
 
     <div class="header-actions">
+        <div style="position:relative; margin-right:10px;">
+            <input type="text" id="chatSearch" placeholder="Cari pesan..." onkeyup="searchMessages()" 
+                style="background:#0d0f0d; border:1px solid #3E5641; border-radius:20px; padding:6px 14px 6px 30px; color:#fff; font-size:12px; width:150px; outline:none;">
+            <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; color:#6f8a75;">🔍</span>
+        </div>
         <button onclick="switchTab(event,'chat')" class="tab-btn active">Chat</button>
         <button onclick="switchTab(event,'members')" class="tab-btn">Members</button>
         <button onclick="switchTab(event,'workspace')" class="tab-btn">Workspace</button>
@@ -95,7 +186,7 @@
                         $isAdmin = $pEmail === 'moonomaproject@gmail.com';
                         $initials = strtoupper(substr($pName, 0, 1));
                     @endphp
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #0d0f0d; border: 1px solid {{ $isAdmin ? '#c9a227' : '#3E5641' }}; border-radius: 10px; {{ $isAdmin ? 'box-shadow: 0 0 8px rgba(201,162,39,0.2);' : '' }}">
+                    <div onclick="showUserProfile('{{ $pEmail }}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #0d0f0d; border: 1px solid {{ $isAdmin ? '#c9a227' : '#3E5641' }}; border-radius: 10px; cursor: pointer; transition: 0.2s; {{ $isAdmin ? 'box-shadow: 0 0 8px rgba(201,162,39,0.2);' : '' }}" onmouseover="this.style.borderColor='#fff'" onmouseout="this.style.borderColor='{{ $isAdmin ? '#c9a227' : '#3E5641' }}'">
                         <div style="display:flex; align-items:center; gap:10px;">
                             {{-- Avatar initials or image --}}
                             <div style="width:32px; height:32px; border-radius:50%; background:{{ $isAdmin ? 'linear-gradient(135deg, #c9a227, #f5d679)' : '#1f2d22' }}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; color:{{ $isAdmin ? '#1a1100' : '#8fba97' }}; flex-shrink:0; overflow:hidden;">
@@ -140,6 +231,43 @@
 
 </div>
 
+<!-- USER PROFILE MODAL -->
+<div id="profileModal" class="modal-overlay" onclick="closeProfileModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="modal-close" onclick="closeProfileModal(event)">&times;</span>
+        <div class="modal-header">
+            <img id="modalAvatar" src="" class="modal-avatar">
+            <h2 id="modalName" style="margin:0;"></h2>
+            <div id="modalRole" style="font-size:12px; color:#c9a227; margin-top:5px;"></div>
+        </div>
+        
+        <div class="modal-details">
+            <div>
+                <div class="modal-label">Email</div>
+                <div id="modalEmail" class="modal-value"></div>
+            </div>
+            <div>
+                <div class="modal-label">City</div>
+                <div id="modalCity" class="modal-value"></div>
+            </div>
+            <div class="modal-full">
+                <div class="modal-label">Skill Teach</div>
+                <div id="modalSkillTeach" class="modal-value"></div>
+            </div>
+            <div class="modal-full">
+                <div class="modal-label">Skill Learn</div>
+                <div id="modalSkillLearn" class="modal-value"></div>
+            </div>
+            <div class="modal-full">
+                <div class="modal-label">Availability</div>
+                <div id="modalAvailability" class="modal-value"></div>
+            </div>
+        </div>
+
+        <a id="modalCvLink" href="#" target="_blank" class="modal-cv-btn" style="display:none;">View CV (PDF)</a>
+    </div>
+</div>
+
 <script>
 /* ROOM DARI ROUTE */
 let currentRoom = @json($room);
@@ -152,6 +280,62 @@ function switchTab(e, tab){
 
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     e.target.classList.add('active');
+}
+
+/* DATA FOR MODAL */
+const usersMap = @json($usersMap);
+const profilesMap = @json($profilesMap);
+
+function showUserProfile(email) {
+    const user = usersMap[email];
+    if (!user) return;
+
+    const profile = profilesMap[user.id] || {};
+
+    document.getElementById('modalAvatar').src = user.avatar || 'https://cdn-icons-png.flaticon.com/512/847/847969.png';
+    document.getElementById('modalName').innerText = user.name;
+    document.getElementById('modalRole').innerText = user.role || 'Member';
+    document.getElementById('modalEmail').innerText = user.email;
+    document.getElementById('modalCity').innerText = profile.city || '-';
+    
+    document.getElementById('modalSkillTeach').innerText = (profile.skill_teach && Array.isArray(profile.skill_teach)) 
+        ? profile.skill_teach.join(', ') 
+        : (profile.skill_teach || '-');
+
+    document.getElementById('modalSkillLearn').innerText = (profile.skill_learn && Array.isArray(profile.skill_learn)) 
+        ? profile.skill_learn.join(', ') 
+        : (profile.skill_learn || '-');
+
+    document.getElementById('modalAvailability').innerText = profile.availability || '-';
+
+    const cvBtn = document.getElementById('modalCvLink');
+    if (profile.cv_path) {
+        cvBtn.href = "{{ asset('') }}" + profile.cv_path;
+        cvBtn.style.display = 'block';
+    } else {
+        cvBtn.style.display = 'none';
+    }
+
+    document.getElementById('profileModal').style.display = 'flex';
+}
+
+function closeProfileModal(e) {
+    document.getElementById('profileModal').style.display = 'none';
+}
+
+/* SEARCH MESSAGES */
+function searchMessages() {
+    let query = document.getElementById('chatSearch').value.toLowerCase();
+    let items = document.querySelectorAll('.chat-item');
+    
+    items.forEach(item => {
+        let text = item.innerText.toLowerCase();
+        if (text.includes(query)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }
 
 /* DEFAULT */

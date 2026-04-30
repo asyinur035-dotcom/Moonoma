@@ -7,7 +7,7 @@
 
         <div class="profile-left">
             <div class="avatar-preview">
-                <img id="preview" src="https://cdn-icons-png.flaticon.com/512/847/847969.png">
+                <img id="preview" src="{{ session('avatar', 'https://cdn-icons-png.flaticon.com/512/847/847969.png') }}">
             </div>
 
             <label class="upload-file">
@@ -28,6 +28,7 @@
                 >
             </div>
 
+            @if(session('email') !== 'moonomaproject@gmail.com')
             <div class="form-group">
                 <label class="label">Role</label>
 
@@ -48,6 +49,14 @@
                     style="display:none; margin-top:10px;"
                 >
             </div>
+            @else
+            <div class="form-group">
+                <label class="label">Role</label>
+                <input type="hidden" id="roleSelect" value="admin">
+                <input type="hidden" id="customRole" value="">
+                <div style="padding:10px; border:1px solid #c9a227; border-radius:10px; color:#c9a227; font-weight:700; text-align:center;">ADMIN ACCOUNT</div>
+            </div>
+            @endif
 
             <div class="btn-group">
                 <a href="{{ route('home') }}" class="cancel-btn">Cancel</a>
@@ -184,6 +193,7 @@ function saveProfile(){
     let name = document.getElementById('nameInput').value.trim();
     let select = document.getElementById('roleSelect').value;
     let custom = document.getElementById('customRole').value.trim();
+    let avatar = document.getElementById('preview').src;
 
     let role = (select === 'other') ? custom : select;
 
@@ -192,21 +202,33 @@ function saveProfile(){
         return;
     }
 
+    @if(session('email') !== 'moonomaproject@gmail.com')
     if(!role){
         alert('Role wajib diisi');
         return;
     }
+    @endif
+
+    // Use FormData for consistency with other edit page
+    let formData = new FormData();
+    formData.append('name', name);
+    formData.append('role', role);
+    formData.append('avatar', avatar);
 
     fetch("{{ route('profile.save') }}", {
         method: "POST",
         headers: {
-            "Content-Type": "application/json",
             "X-CSRF-TOKEN": "{{ csrf_token() }}"
         },
-        body: JSON.stringify({ name, role })
+        body: formData
     })
-    .then(() => {
-        window.location.href = "{{ route('home') }}";
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            window.location.href = "{{ route('home') }}";
+        } else {
+            alert(data.message || 'Gagal menyimpan');
+        }
     });
 }
 </script>

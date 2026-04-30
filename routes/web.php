@@ -278,13 +278,42 @@ function saveUsers($users)
 
 function getChats()
 {
-    $data = json_decode(file_get_contents(jsonFilePath('chats')), true);
-    return is_array($data) ? $data : [];
+    $path = jsonFilePath('chats');
+    $data = json_decode(file_get_contents($path), true);
+    $allChats = is_array($data) ? $data : [];
+
+    // MIGRATION: Ensure every message has an ID
+    $changed = false;
+    foreach ($allChats as $room => &$messages) {
+        foreach ($messages as &$m) {
+            if (!isset($m['id'])) {
+                $m['id'] = 'msg_' . md5(($m['sender'] ?? '') . ($m['time'] ?? '') . ($m['message'] ?? ''));
+                $changed = true;
+            }
+        }
+    }
+    if ($changed) {
+        saveChats($allChats);
+    }
+
+    return $allChats;
 }
 
 function saveChats($chats)
 {
     file_put_contents(jsonFilePath('chats'), json_encode($chats, JSON_PRETTY_PRINT));
+}
+
+function getDeletedMessages()
+{
+    $path = jsonFilePath('deleted_messages');
+    $data = json_decode(file_get_contents($path), true);
+    return is_array($data) ? $data : [];
+}
+
+function saveDeletedMessages($data)
+{
+    file_put_contents(jsonFilePath('deleted_messages'), json_encode($data, JSON_PRETTY_PRINT));
 }
 
 /*
@@ -310,7 +339,14 @@ Route::get('/home', function () {
         }
     }
 
-    return view('home', compact('roomsJoined'));
+    $userId = session('user_id');
+    $profile = null;
+    if ($userId) {
+        $profileService = app(App\Services\ProfileService::class);
+        $profile = $profileService->getByUserId($userId);
+    }
+
+    return view('home', compact('roomsJoined', 'profile'));
 })->name('home');
 Route::view('/home/edit', 'home-edit')->name('home.edit');
 
@@ -338,10 +374,14 @@ Route::post('/profile/save', function (Request $request) {
     // Handle Avatar if it's a file or base64 (though JS sends it as base64 in preview)
     // For now we keep it as it is in the session/user record
     $users = getUsers();
+    $userEmail = session('email');
+    $isAdmin = $userEmail === 'moonomaproject@gmail.com';
+    $role = $isAdmin ? 'admin' : $request->role;
+
     foreach ($users as &$u) {
         if ($u['id'] == $userId) {
             $u['name'] = $request->name;
-            $u['role'] = $request->role;
+            $u['role'] = $role;
             $u['avatar'] = $request->avatar;
             saveUsers($users);
             break;
@@ -370,14 +410,16 @@ Route::post('/profile/save', function (Request $request) {
 
     $profileService->updateByUserId($userId, $profileData);
 
+    $updatedProfile = $profileService->getByUserId($userId);
+
     // Update session
     session([
         'name' => $request->name,
-        'role' => $request->role,
+        'role' => $role,
         'avatar' => $request->avatar,
         'city' => $request->city,
-        'skill_teach' => is_string($request->skill_teach) ? explode(',', $request->skill_teach) : $request->skill_teach,
-        'skill_learn' => is_string($request->skill_learn) ? explode(',', $request->skill_learn) : $request->skill_learn,
+        'skill_teach' => $updatedProfile['skill_teach'] ?? [],
+        'skill_learn' => $updatedProfile['skill_learn'] ?? [],
     ]);
 
     return response()->json([
@@ -385,6 +427,36 @@ Route::post('/profile/save', function (Request $request) {
         'message' => 'Profile berhasil disimpan',
     ]);
 })->name('profile.save');
+
+Route::post('/profile/add-skill', function (Request $request) {
+    $userId = session('user_id');
+    if (!$userId) return response()->json(['success' => false], 401);
+
+    $profileService = app(App\Services\ProfileService::class);
+    $profile = $profileService->getByUserId($userId);
+    if (!$profile) {
+        $profile = $profileService->createDefault($userId);
+    }
+
+    $type = $request->type; // teach or learn
+    $skill = $request->skill;
+
+    $field = ($type === 'teach') ? 'skill_teach' : 'skill_learn';
+    $skills = $profile[$field] ?? [];
+    
+    if (!in_array($skill, $skills)) {
+        $skills[] = $skill;
+    }
+
+    $profileService->updateByUserId($userId, [
+        $field => $skills
+    ]);
+
+    // Update session too
+    session([$field => $skills]);
+
+    return response()->json(['success' => true]);
+})->name('profile.add-skill');
 
 
 /*
@@ -629,13 +701,30 @@ Route::get('/chat/{room}', function ($room) {
         return redirect()->route('rooms')->with('error', 'Anda telah di-kick dari room ini.');
     }
 
-    $allChats = getChats();
-    $messages = $allChats[$room] ?? [];
-
     $users = getUsers();
     $usersMap = [];
     foreach ($users as $u) {
         $usersMap[$u['email']] = $u;
+    }
+
+    $allChats = getChats();
+    $messages = $allChats[$room] ?? [];
+
+    // Filter messages "deleted for me"
+    $deletedData = getDeletedMessages();
+    $userEmail = session('email');
+    $userDeleted = $deletedData[$userEmail] ?? [];
+    
+    $messages = array_filter($messages, function($m) use ($userDeleted) {
+        return !in_array($m['id'] ?? '', $userDeleted);
+    });
+    $messages = array_values($messages);
+
+    $jsonDb = app(App\Services\JsonDatabaseService::class);
+    $allProfiles = $jsonDb->all('profiles');
+    $profilesMap = [];
+    foreach ($allProfiles as $p) {
+        $profilesMap[$p['user_id']] = $p;
     }
 
     return view('chat', [
@@ -643,20 +732,57 @@ Route::get('/chat/{room}', function ($room) {
         'roomData' => $roomData,
         'messages' => $messages,
         'usersMap' => $usersMap,
+        'profilesMap' => $profilesMap,
     ]);
 })->name('chat.room');
 
 Route::post('/chat/{room}/send', function (Request $request, $room) {
     $request->validate([
-        'message' => 'required',
+        'message' => 'nullable|string',
+        'attachment' => 'nullable|file|max:40960', // 40MB limit
+    ], [
+        'attachment.max' => 'Ukuran file terlalu besar. Maksimal 40MB.',
     ]);
+
+    if (!$request->message && !$request->hasFile('attachment')) {
+        return back()->with('error', 'Pesan atau file wajib diisi.');
+    }
 
     $allChats = getChats();
     $messages = $allChats[$room] ?? [];
 
+    $attachmentData = null;
+    if ($request->hasFile('attachment')) {
+        $file = $request->file('attachment');
+        $originalName = $file->getClientOriginalName();
+        $mime = $file->getMimeType();
+        $type = 'file';
+
+        if (str_contains($mime, 'image')) {
+            $type = 'image';
+        } elseif (str_contains($mime, 'video')) {
+            $type = 'video';
+        } elseif (str_contains($mime, 'audio')) {
+            $type = 'audio';
+        }
+
+        $filename = time() . '_' . $originalName;
+        $file->storeAs('chat_attachments/' . $room, $filename, 'public');
+        $path = 'storage/chat_attachments/' . $room . '/' . $filename;
+
+        $attachmentData = [
+            'type' => $type,
+            'path' => $path,
+            'name' => $originalName,
+            'mime' => $mime
+        ];
+    }
+
     $messages[] = [
+        'id' => uniqid('msg_'),
         'sender' => session('name', 'User'),
         'message' => $request->message,
+        'attachment' => $attachmentData,
         'time' => now()->toDateTimeString(),
     ];
 
@@ -665,6 +791,49 @@ Route::post('/chat/{room}/send', function (Request $request, $room) {
 
     return back();
 })->name('chat.send');
+
+Route::post('/chat/{room}/delete', function (Request $request, $room) {
+    $msgId = $request->message_id;
+    $type = $request->type; // 'for_me' or 'for_everyone'
+    $userEmail = session('email');
+
+    $allChats = getChats();
+    $messages = $allChats[$room] ?? [];
+
+    if ($type === 'for_everyone') {
+        foreach ($messages as $key => $m) {
+            if (($m['id'] ?? '') === $msgId) {
+                // Check if owner
+                if (($m['sender'] ?? '') !== session('name')) {
+                    return back()->with('error', 'Hanya pemilik pesan yang bisa menghapus untuk semua.');
+                }
+
+                // Check 10 minutes limit
+                $sentTime = \Carbon\Carbon::parse($m['time']);
+                if ($sentTime->diffInMinutes(now()) > 10) {
+                    return back()->with('error', 'Batas waktu 10 menit telah berakhir.');
+                }
+
+                unset($messages[$key]);
+                $allChats[$room] = array_values($messages);
+                saveChats($allChats);
+                return back()->with('success', 'Pesan berhasil dihapus untuk semua.');
+            }
+        }
+    } else {
+        // for_me
+        $deletedData = getDeletedMessages();
+        $userDeleted = $deletedData[$userEmail] ?? [];
+        if (!in_array($msgId, $userDeleted)) {
+            $userDeleted[] = $msgId;
+        }
+        $deletedData[$userEmail] = $userDeleted;
+        saveDeletedMessages($deletedData);
+        return back()->with('success', 'Pesan berhasil dihapus untuk Anda.');
+    }
+
+    return back();
+})->name('chat.delete');
 
 Route::post('/chat/{room}/kick', function (Request $request, $room) {
     if (session('role') !== 'admin') {

@@ -156,7 +156,13 @@ body{
         </div>
         <div>
             <div style="font-size:12px;">{{ session('name', session('user_name', 'Unknown')) }}</div>
-            <div style="font-size:10px;color:#888;">{{ session('role', session('user_role', 'Designer')) }}</div>
+            <div style="font-size:10px;color:#888;">
+                @if(session('email') === 'moonomaproject@gmail.com')
+                    <span style="color:#c9a227; font-weight:700;">ADMIN</span>
+                @else
+                    {{ session('role', session('user_role', 'Designer')) }}
+                @endif
+            </div>
         </div>
     </div>
 
@@ -174,6 +180,16 @@ body{
         @if(session('error'))
             <div style="background:#8b3a3a; color:#fff; padding:10px 15px; border-radius:8px; margin-bottom:20px;">
                 {{ session('error') }}
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div style="background:#8b3a3a; color:#fff; padding:10px 15px; border-radius:8px; margin-bottom:20px;">
+                <ul style="margin:0; padding-left:15px;">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 
