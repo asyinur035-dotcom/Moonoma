@@ -82,6 +82,18 @@
     gap:20px;
 }
 
+@media (max-width: 992px) {
+    .room-grid {
+        grid-template-columns: repeat(2,1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .room-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* CARD */
 .room-card{
     border:1px solid #3E5641;
@@ -195,7 +207,7 @@
                 <div class="room-sub">{{ $r['desc'] ?? '' }}</div>
 
                 <div class="room-footer">
-                    <div class="member">{{ $r['member'] ?? 1 }} Member</div>
+                    <div class="member">{{ count($r['joined_users'] ?? []) }} Member</div>
                     <div style="display: flex; gap: 8px;">
                         @if(session('role') === 'admin')
                             <form action="{{ route('room.delete', !empty($r['slug']) ? $r['slug'] : 'invalid') }}" method="POST" style="margin:0;" onsubmit="return confirm('Yakin ingin menghapus room ini?');">

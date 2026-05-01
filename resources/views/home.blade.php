@@ -65,7 +65,12 @@
     display:grid;
     grid-template-columns:280px 1fr;
     gap:30px;
-    padding:0 20px;
+}
+
+@media (max-width: 768px) {
+    .home-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .left,.right{

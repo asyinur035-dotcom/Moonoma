@@ -84,6 +84,24 @@ body{
 .bottom-profile{
     display:flex;
     gap:10px;
+    align-items:center;
+    padding-top:20px;
+    border-top:1px solid #1c1c1c;
+}
+
+.logout-btn{
+    margin-left:auto;
+    color:#e87c7c;
+    text-decoration:none;
+    font-size:16px;
+    opacity:0.8;
+    transition:0.2s;
+}
+
+.logout-btn:hover{
+    color:#ff4d4d;
+    opacity:1;
+    transform:scale(1.1);
 }
 
 .mini-avatar{
@@ -100,19 +118,95 @@ body{
 .main{
     flex:1;
     padding:40px 0;
+    min-height: 100vh;
 }
 
 .container{
     max-width:900px;
     margin:0 auto;
+    padding: 0 20px;
+}
+
+/* MOBILE NAV */
+.mobile-header{
+    display:none;
+    background:#0f1110;
+    border-bottom:1px solid #1c1c1c;
+    padding:14px 20px;
+    justify-content:space-between;
+    align-items:center;
+    position:sticky;
+    top:0;
+    z-index:900;
+}
+
+.hamburger{
+    background:none;
+    border:none;
+    color:#fff;
+    font-size:24px;
+    cursor:pointer;
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 998;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: -240px;
+        top: 0;
+        z-index: 999;
+        transition: 0.3s;
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+    }
+
+    .sidebar.open {
+        left: 0;
+    }
+
+    .sidebar-overlay.show {
+        display: block;
+    }
+
+    .mobile-header {
+        display: flex;
+    }
+
+    .main {
+        padding: 20px 0;
+    }
+
+    .container {
+        padding: 0 15px;
+    }
 }
 </style>
 </head>
 
-<body>
+<!-- MOBILE HEADER -->
+<div class="mobile-header">
+    <div class="logo" style="margin-bottom:0;">
+        <div class="logo-icon" style="width:28px; height:28px; font-size:14px;">🌙</div>
+        <div style="font-size:14px; font-weight:600;">Moonoma</div>
+    </div>
+    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+</div>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
 <!-- SIDEBAR -->
-<div class="sidebar">
+<div class="sidebar" id="sidebar">
 
     <div>
 
@@ -154,8 +248,8 @@ body{
                 {{ strtoupper(substr(session('name', session('user_name', 'Unknown')), 0, 2)) }}
             @endif
         </div>
-        <div>
-            <div style="font-size:12px;">{{ session('name', session('user_name', 'Unknown')) }}</div>
+        <div style="flex:1; overflow:hidden;">
+            <div style="font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ session('name', session('user_name', 'Unknown')) }}</div>
             <div style="font-size:10px;color:#888;">
                 @if(session('email') === 'moonomaproject@gmail.com')
                     <span style="color:#c9a227; font-weight:700;">ADMIN</span>
@@ -164,6 +258,13 @@ body{
                 @endif
             </div>
         </div>
+        <a href="{{ route('logout') }}" class="logout-btn" title="Logout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+        </a>
     </div>
 
 </div>
@@ -196,6 +297,25 @@ body{
         @yield('content')
     </div>
 </div>
+
+<script>
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+}
+
+// Close sidebar on link click (mobile)
+if (window.innerWidth <= 768) {
+    document.querySelectorAll('.sidebar a').forEach(link => {
+        link.addEventListener('click', () => {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('show');
+        });
+    });
+}
+</script>
 
 </body>
 </html>

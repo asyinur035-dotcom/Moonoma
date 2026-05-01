@@ -18,6 +18,15 @@
     gap:30px;
 }
 
+@media (max-width: 768px) {
+    .profile-container {
+        flex-direction: column;
+    }
+    .profile-left {
+        width: 100%;
+    }
+}
+
 .profile-left{
     width:280px;
     display:flex;
@@ -256,12 +265,18 @@ select.input option{
                 <div class="label">CV</div>
 
                 <div class="cv-box">
-                    <label class="cv-upload">
-                        <input type="file" id="cvInput" accept="application/pdf" onchange="previewCV(event)">
-                        Upload CV (PDF)
-                    </label>
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                        <label class="cv-upload">
+                            <input type="file" id="cvInput" accept="application/pdf" onchange="previewCV(event)">
+                            Upload CV (PDF)
+                        </label>
 
-                    <p id="cvName" class="cv-name">{{ ($profile['cv_path'] ?? null) ? basename($profile['cv_path']) : 'No file selected' }}</p>
+                        <div id="cvInfo" style="display: {{ ($profile['cv_path'] ?? null) ? 'flex' : 'none' }}; align-items:center; gap:10px;">
+                            <p id="cvName" class="cv-name" style="margin:0;">{{ ($profile['cv_path'] ?? null) ? basename($profile['cv_path']) : 'No file selected' }}</p>
+                            <button type="button" id="deleteCvBtn" onclick="deleteCV()" style="background:none; border:none; color:#8b3a3a; font-size:12px; cursor:pointer; text-decoration:underline;">Hapus CV</button>
+                        </div>
+                        <p id="cvStatus" class="cv-name" style="display: {{ ($profile['cv_path'] ?? null) ? 'none' : 'block' }};">No file selected</p>
+                    </div>
                 </div>
             </div>
 
@@ -276,6 +291,8 @@ select.input option{
 </form>
 
 <script>
+let isDeletingCV = false;
+
 function previewImage(e){
     const file = e.target.files[0];
     if(!file) return;
@@ -291,7 +308,23 @@ function previewCV(e){
         e.target.value='';
         return;
     }
-    document.getElementById('cvName').innerText = file ? file.name : 'No file selected';
+    
+    if (file) {
+        document.getElementById('cvInfo').style.display = 'flex';
+        document.getElementById('cvStatus').style.display = 'none';
+        document.getElementById('cvName').innerText = file.name;
+        isDeletingCV = false;
+    }
+}
+
+function deleteCV() {
+    if (confirm('Yakin ingin menghapus CV ini?')) {
+        document.getElementById('cvInput').value = '';
+        document.getElementById('cvInfo').style.display = 'none';
+        document.getElementById('cvStatus').style.display = 'block';
+        document.getElementById('cvStatus').innerText = 'CV akan dihapus setelah disimpan';
+        isDeletingCV = true;
+    }
 }
 
 function handleRole(){
@@ -352,6 +385,9 @@ function saveProfile(e){
     formData.append('availability', availability);
     if(cvFile) {
         formData.append('cv', cvFile);
+    }
+    if(isDeletingCV) {
+        formData.append('delete_cv', '1');
     }
 
     fetch("{{ route('profile.save') }}", {

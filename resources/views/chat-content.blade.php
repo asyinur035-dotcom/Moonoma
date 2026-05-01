@@ -59,7 +59,8 @@
 .chat-input{
     display:flex;
     gap:10px;
-    margin-top:10px;
+    margin-top:30px;
+    padding-bottom:10px;
 }
 
 .chat-input input{

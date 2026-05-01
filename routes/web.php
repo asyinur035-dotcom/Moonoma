@@ -389,12 +389,29 @@ Route::post('/profile/save', function (Request $request) {
     }
 
     $cvPath = null;
+    $profile = $profileService->getByUserId($userId);
+    $oldCvPath = $profile['cv_path'] ?? null;
+
     if ($request->hasFile('cv')) {
         $request->validate(['cv' => 'mimes:pdf|max:2048']);
         $file = $request->file('cv');
         $filename = 'cv_' . $userId . '_' . time() . '.' . $file->getClientOriginalExtension();
-        $file->storeAs('public/cv', $filename);
+        $file->storeAs('cv', $filename, 'public');
         $cvPath = 'storage/cv/' . $filename;
+        
+        // Delete old file if exists
+        if ($oldCvPath && file_exists(public_path($oldCvPath))) {
+            @unlink(public_path($oldCvPath));
+        }
+    } elseif ($request->delete_cv) {
+        $cvPath = null;
+        // Delete old file if exists
+        if ($oldCvPath && file_exists(public_path($oldCvPath))) {
+            @unlink(public_path($oldCvPath));
+        }
+    } else {
+        // Keep old path if neither new upload nor delete requested
+        $cvPath = $oldCvPath;
     }
 
     $profileData = [
@@ -404,9 +421,7 @@ Route::post('/profile/save', function (Request $request) {
         'availability' => $request->availability,
     ];
 
-    if ($cvPath) {
-        $profileData['cv_path'] = $cvPath;
-    }
+    $profileData['cv_path'] = $cvPath;
 
     $profileService->updateByUserId($userId, $profileData);
 
@@ -509,6 +524,14 @@ Route::post('/rooms/store', function (Request $request) {
     $roomCode = strtoupper(substr(md5($request->name . time()), 0, 6));
     $status = $request->status ?? 'Public';
 
+    $joinedUsers = [];
+    if (session('name')) {
+        $joinedUsers[] = [
+            'name' => session('name'),
+            'email' => session('email'),
+        ];
+    }
+
     $rooms[] = [
         'id' => uniqid('room_'),
         'slug' => $slug,
@@ -518,7 +541,8 @@ Route::post('/rooms/store', function (Request $request) {
         'role_required' => $request->role_required,
         'type' => $request->type ?? 'Coding',
         'status' => $status,
-        'member' => 1,
+        'joined_users' => $joinedUsers,
+        'member' => count($joinedUsers),
         'code' => $roomCode,
         'created_by' => session('email', 'guest'),
         'created_at' => now()->toDateTimeString(),
@@ -585,8 +609,6 @@ Route::post('/rooms/join/{slug}', function ($slug) {
                 return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
             }
 
-            $room['member'] = ($room['member'] ?? 0) + 1;
-
             $joined = $room['joined_users'] ?? [];
             $names = array_column($joined, 'name');
             if (!in_array(session('name'), $names)) {
@@ -596,6 +618,7 @@ Route::post('/rooms/join/{slug}', function ($slug) {
                 ];
             }
             $room['joined_users'] = $joined;
+            $room['member'] = count($joined);
 
             saveRooms($rooms);
 
@@ -658,8 +681,6 @@ Route::post('/invite/join', function (Request $request) {
                 return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
             }
 
-            $room['member'] = ($room['member'] ?? 0) + 1;
-
             $joined = $room['joined_users'] ?? [];
             $names = array_column($joined, 'name');
             if (!in_array(session('name'), $names)) {
@@ -669,6 +690,7 @@ Route::post('/invite/join', function (Request $request) {
                 ];
             }
             $room['joined_users'] = $joined;
+            $room['member'] = count($joined);
 
             saveRooms($rooms);
 

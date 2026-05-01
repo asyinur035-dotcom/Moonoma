@@ -130,6 +130,30 @@
     font-size: 13px;
     margin-top: 20px;
 }
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .header-actions {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 5px;
+        scrollbar-width: none;
+    }
+    
+    .header-actions::-webkit-scrollbar {
+        display: none;
+    }
+
+    #chatSearch {
+        width: 100% !important;
+    }
+}
 </style>
 
 <!-- HEADER -->
@@ -242,7 +266,7 @@
         </div>
         
         <div class="modal-details">
-            <div>
+            <div id="modalEmailContainer" style="{{ session('role') === 'admin' ? '' : 'display:none;' }}">
                 <div class="modal-label">Email</div>
                 <div id="modalEmail" class="modal-value"></div>
             </div>
@@ -271,6 +295,7 @@
 <script>
 /* ROOM DARI ROUTE */
 let currentRoom = @json($room);
+let currentUserRole = @json(session('role'));
 
 /* SWITCH TAB */
 function switchTab(e, tab){
@@ -295,7 +320,11 @@ function showUserProfile(email) {
     document.getElementById('modalAvatar').src = user.avatar || 'https://cdn-icons-png.flaticon.com/512/847/847969.png';
     document.getElementById('modalName').innerText = user.name;
     document.getElementById('modalRole').innerText = user.role || 'Member';
-    document.getElementById('modalEmail').innerText = user.email;
+    const emailContainer = document.getElementById('modalEmailContainer');
+    if (emailContainer) {
+        document.getElementById('modalEmail').innerText = user.email;
+    }
+
     document.getElementById('modalCity').innerText = profile.city || '-';
     
     document.getElementById('modalSkillTeach').innerText = (profile.skill_teach && Array.isArray(profile.skill_teach)) 
@@ -309,7 +338,7 @@ function showUserProfile(email) {
     document.getElementById('modalAvailability').innerText = profile.availability || '-';
 
     const cvBtn = document.getElementById('modalCvLink');
-    if (profile.cv_path) {
+    if (profile.cv_path && currentUserRole === 'admin') {
         cvBtn.href = "{{ asset('') }}" + profile.cv_path;
         cvBtn.style.display = 'block';
     } else {
