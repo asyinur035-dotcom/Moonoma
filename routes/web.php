@@ -758,6 +758,23 @@ Route::get('/chat/{room}', function ($room) {
     ]);
 })->name('chat.room');
 
+Route::get('/chat/{room}/messages', function ($room) {
+    $allChats = getChats();
+    $messages = $allChats[$room] ?? [];
+
+    // Filter messages "deleted for me"
+    $deletedData = getDeletedMessages();
+    $userEmail = session('email');
+    $userDeleted = $deletedData[$userEmail] ?? [];
+    
+    $messages = array_filter($messages, function($m) use ($userDeleted) {
+        return !in_array($m['id'] ?? '', $userDeleted);
+    });
+    $messages = array_values($messages);
+
+    return view('chat-messages', compact('messages', 'room'));
+})->name('chat.messages');
+
 Route::post('/chat/{room}/send', function (Request $request, $room) {
     $request->validate([
         'message' => 'nullable|string',
