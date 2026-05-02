@@ -26,6 +26,9 @@ body{
     display:flex;
     flex-direction:column;
     justify-content:space-between;
+    position: sticky;
+    top: 0;
+    flex-shrink: 0;
 }
 
 /* LOGO */
@@ -222,7 +225,8 @@ body{
         <!-- NAV -->
         <div class="menu-title">NAVIGATE</div>
         <div class="menu">
-            <a href="{{ route('home') }}" class="{{ request()->routeIs('home*') ? 'active' : '' }}">Home</a>
+            <a href="{{ route('home') }}" class="{{ request()->routeIs('home') ? 'active' : '' }}">Home</a>
+            <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard*') ? 'active' : '' }}">Dashboard</a>
             <a href="{{ route('rooms') }}" class="{{ request()->routeIs('rooms*') ? 'active' : '' }}">Rooms</a>
             <a href="{{ route('profile') }}" class="{{ request()->routeIs('profile*') ? 'active' : '' }}">Profile</a>
         </div>

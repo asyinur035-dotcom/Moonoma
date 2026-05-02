@@ -198,13 +198,13 @@ function saveProfile(){
     let role = (select === 'other') ? custom : select;
 
     if(!name){
-        alert('Name wajib diisi');
+        alert('Name is required');
         return;
     }
 
     @if(session('email') !== 'moonomaproject@gmail.com')
     if(!role){
-        alert('Role wajib diisi');
+        alert('Role is required');
         return;
     }
     @endif
@@ -227,7 +227,7 @@ function saveProfile(){
         if(data.success) {
             window.location.href = "{{ route('home') }}";
         } else {
-            alert(data.message || 'Gagal menyimpan');
+            alert(data.message || 'Failed to save');
         }
     });
 }

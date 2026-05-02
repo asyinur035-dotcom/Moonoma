@@ -108,6 +108,63 @@
     margin-bottom: 4px;
 }
 
+/* MODAL REPORT STYLES */
+.modal-input {
+    width:100%;
+    background:#0d0f0d;
+    border:1px solid #3E5641;
+    border-radius:10px;
+    padding:12px;
+    color:#fff;
+    font-size:13px;
+    margin-top:5px;
+}
+
+.modal-input:focus {
+    border-color:#6f8a75;
+    outline:none;
+}
+
+.modal-report-btn {
+    margin-top:20px;
+    width:100%;
+    background:transparent;
+    border:1px solid #e87c7c;
+    color:#e87c7c;
+    padding:10px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+.modal-report-btn:hover {
+    background:rgba(232, 124, 124, 0.1);
+}
+
+.modal-submit-btn {
+    flex:1;
+    background:#e87c7c;
+    color:#fff;
+    border:none;
+    padding:12px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+}
+
+.modal-cancel-btn {
+    flex:1;
+    background:transparent;
+    border:1px solid #3E5641;
+    color:#6f8a75;
+    padding:12px;
+    border-radius:10px;
+    font-weight:600;
+    cursor:pointer;
+}
+
 .modal-value {
     font-size: 13px;
     color: #fff;
@@ -167,7 +224,7 @@
                 <span style="font-size:10px; background:#1a2200; border:1px solid #c9a227; color:#c9a227; border-radius:6px; padding:1px 7px;">🔒 Private</span>
             @endif
         </div>
-        @if(session('role') === 'admin' && ($roomData['status'] ?? 'Public') === 'Private')
+        @if((session('role') === 'admin' || session('email') === ($roomData['created_by'] ?? '')) && ($roomData['status'] ?? 'Public') === 'Private')
             <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
                 <span style="font-size:10px; color:#6f8a75;">Kode Room:</span>
                 <span style="font-family:monospace; font-size:13px; font-weight:700; color:#f5d679; letter-spacing:3px;">{{ $roomData['code'] ?? '-' }}</span>
@@ -289,6 +346,40 @@
         </div>
 
         <a id="modalCvLink" href="#" target="_blank" class="modal-cv-btn" style="display:none;">View CV (PDF)</a>
+
+        <!-- REPORT BUTTON -->
+        <button id="modalReportBtn" onclick="openReportModal()" class="modal-report-btn">Report User</button>
+    </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div id="reportModal" class="modal-overlay" style="z-index:1100; display:none;" onclick="closeReportModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()" style="max-width:400px;">
+        <span class="modal-close" onclick="closeReportModal(event)">&times;</span>
+        <div class="modal-header">
+            <h2 style="margin:0; color:#e87c7c;">Report User</h2>
+            <p style="font-size:12px; color:#6f8a75; margin-top:5px;">Report <span id="reportTargetName" style="font-weight:700;"></span> for violations.</p>
+        </div>
+        
+        <form id="reportForm" onsubmit="submitReport(event)" enctype="multipart/form-data">
+            <input type="hidden" id="reportTargetEmail" name="target_email">
+            <input type="hidden" name="room_slug" value="{{ $room }}">
+
+            <div style="margin-top:20px;">
+                <label class="modal-label">Reason for Report</label>
+                <textarea name="reason" class="modal-input" placeholder="Explain why you are reporting this user..." required style="height:100px; resize:none;"></textarea>
+            </div>
+
+            <div style="margin-top:15px;">
+                <label class="modal-label">Evidence (Image/Proof)</label>
+                <input type="file" name="evidence" accept="image/*" class="modal-input" required>
+            </div>
+
+            <div style="margin-top:25px; display:flex; gap:10px;">
+                <button type="button" onclick="closeReportModal(event)" class="modal-cancel-btn">Cancel</button>
+                <button type="submit" class="modal-submit-btn">Send Report</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -373,6 +464,57 @@ window.onload = function(){
     document.getElementById('membersTab').style.display = 'none';
     document.getElementById('workspaceTab').style.display = 'none';
 }
+    /* REPORT MODAL */
+    function openReportModal() {
+        let name = document.getElementById('modalName').innerText;
+        let email = document.getElementById('modalEmail').innerText;
+        
+        document.getElementById('reportTargetName').innerText = name;
+        document.getElementById('reportTargetEmail').value = email;
+        document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    function closeReportModal(e) {
+        document.getElementById('reportModal').style.display = 'none';
+        document.getElementById('reportForm').reset();
+    }
+
+    function submitReport(e) {
+        e.preventDefault();
+        let form = document.getElementById('reportForm');
+        let formData = new FormData(form);
+
+        // Show loading if needed
+        let btn = form.querySelector('.modal-submit-btn');
+        let originalText = btn.innerText;
+        btn.innerText = 'Sending...';
+        btn.disabled = true;
+
+        fetch("{{ route('report.user') }}", {
+            method: "POST",
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                alert('Report sent successfully. Admin will review it soon.');
+                closeReportModal();
+            } else {
+                alert(data.message || 'Failed to send report.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An error occurred while sending the report.');
+        })
+        .finally(() => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        });
+    }
 </script>
 
 @endsection

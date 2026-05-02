@@ -2,413 +2,278 @@
 
 @section('content')
 
-<!-- HEADER -->
-<div class="header">
-    <h2>Home</h2>
-
-    <div class="header-actions">
-        <a href="{{ route('search') }}" class="btn-outline">Search</a>
-        <a href="{{ route('home.edit') }}" class="btn-primary">Edit</a>
-    </div>
-</div>
-
 <style>
-
-/* HEADER FIX (RATA & TIDAK TURUN) */
-.header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-
-    padding:16px 20px 14px; /* 🔥 fix posisi */
-    border-bottom:1px solid #3E5641;
-    margin-bottom:25px;
+/* LANDING PAGE STYLES */
+.landing-container {
+    padding: 0 0 50px 0;
+    overflow-x: hidden;
 }
 
-.header h2{
-    font-size:24px;
-    font-weight:500;
-    margin:0;              /* 🔥 penting */
-    line-height:1.2;
+/* HERO */
+.hero {
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, rgba(62, 86, 65, 0.1) 0%, rgba(13, 15, 13, 0.1) 100%);
+    border-radius: 30px;
+    margin-bottom: 60px;
+    border: 1px solid rgba(62, 86, 65, 0.2);
 }
 
-/* BUTTON HEADER */
-.header-actions{
-    display:flex;
-    gap:10px;
+.hero-content {
+    flex: 1;
 }
 
-.btn-outline{
-    border:1px solid #3E5641;
-    color:#fff;
-    padding:8px 18px;
-    border-radius:20px;
-    text-decoration:none;
-    font-size:13px;
+.hero-content h1 {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fff 0%, #6f8a75 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.btn-outline:hover{
-    background:#3E5641;
+.hero-content p {
+    font-size: 16px;
+    color: #6f8a75;
+    margin-bottom: 30px;
+    line-height: 1.8;
+    text-align: justify;
 }
 
-.btn-primary{
-    background:#3E5641;
-    color:#fff;
-    padding:8px 18px;
-    border-radius:20px;
-    text-decoration:none;
-    font-size:13px;
+.hero-image {
+    flex: 1;
+    max-width: 450px;
 }
 
-/* GRID */
-.home-grid{
-    display:grid;
-    grid-template-columns:280px 1fr;
-    gap:30px;
+.hero-image img {
+    width: 100%;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    border: 1px solid rgba(62, 86, 65, 0.3);
 }
 
-@media (max-width: 768px) {
-    .home-grid {
-        grid-template-columns: 1fr;
-    }
+/* BUTTONS */
+.cta-group {
+    display: flex;
+    gap: 15px;
 }
 
-.left,.right{
-    display:flex;
-    flex-direction:column;
-    gap:20px;
+.btn-main {
+    background: #3E5641;
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.3s;
+    box-shadow: 0 10px 20px rgba(62, 86, 65, 0.2);
 }
 
-/* CARD */
-.card{
-    border:1px solid #3E5641;
-    border-radius:16px;
-    padding:22px;
-    background:#0d0f0d;
+.btn-main:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 25px rgba(62, 86, 65, 0.3);
 }
 
-/* AVATAR */
-.avatar{
-    width:130px;
-    height:130px;
-    border-radius:50%;
-    overflow:hidden;
-    background:#e0e0e0;
-    border:3px solid #3E5641;
-    margin:auto;
+.btn-sec {
+    border: 1px solid #3E5641;
+    color: #fff;
+    padding: 12px 28px;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: 0.3s;
 }
 
-.avatar img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-}
-
-/* NAME */
-.name{
-    font-size:18px;
-    text-align:center;
-}
-
-.role{
-    font-size:13px;
-    text-align:center;
-    color:#822659;
-}
-
-/* STATS */
-.stats-card{
-    display:flex;
-    justify-content:space-between;
-    text-align:center;
-}
-
-.stat span{
-    font-size:12px;
-    color:#6f8a75;
-}
-
-.stat b{
-    display:block;
-    margin-top:6px;
-    font-size:20px;
+.btn-sec:hover {
+    background: rgba(62, 86, 65, 0.1);
 }
 
 /* SECTION */
-.section-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+.section {
+    margin-bottom: 80px;
+    display: flex;
+    align-items: center;
+    gap: 60px;
 }
 
-.card-title{
-    font-size:13px;
-    color:#aaa;
+.section.reverse {
+    flex-direction: row-reverse;
 }
 
-/* ADD BUTTON */
-.add-btn{
-    background:#3E5641;
-    color:#fff;
-    padding:6px 14px;
-    border-radius:10px;
-    border:none;
-    cursor:pointer;
-    font-size:12px;
+.section-text {
+    flex: 1;
 }
 
-.add-btn:hover{
-    opacity:0.85;
+.section-text h2 {
+    font-size: 28px;
+    margin-bottom: 15px;
+    color: #fff;
 }
 
-/* TAG */
-.tags{
-    margin-top:10px;
+.section-text p {
+    font-size: 15px;
+    color: #888;
+    line-height: 1.8;
+    text-align: justify;
 }
 
-.tag{
-    background:#000;
-    border:1px solid #3E5641;
-    padding:6px 12px;
-    border-radius:10px;
-    font-size:12px;
-    margin:4px;
-    display:inline-block;
+.section-img {
+    flex: 1;
 }
 
-/* MODAL */
-.modal{
-    position:fixed;
-    top:0; left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.5);
-    display:none;
-    justify-content:center;
-    align-items:center;
+.section-img img {
+    width: 100%;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.05);
 }
 
-.modal-box{
-    background:#000;
-    border:2px solid #3E5641;
-    padding:25px;
-    border-radius:14px;
-    width:320px;
-    color:#fff;
+/* FEATURES GRID */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 40px;
 }
 
-.modal-box select,
-.modal-box input{
-    width:100%;
-    margin-top:10px;
-    padding:10px;
-    border-radius:8px;
-    border:1px solid #3E5641;
-    background:#0d0f0d;
-    color:#fff;
+.feature-card {
+    background: rgba(13, 15, 13, 0.5);
+    border: 1px solid rgba(62, 86, 65, 0.2);
+    padding: 30px;
+    border-radius: 20px;
+    text-align: center;
+    transition: 0.3s;
 }
 
-.modal-actions{
-    margin-top:18px;
-    display:flex;
-    justify-content:flex-end;
-    gap:10px;
+.feature-card:hover {
+    border-color: #3E5641;
+    transform: translateY(-5px);
 }
 
-.save-btn{
-    background:#3E5641;
-    color:#fff;
-    padding:8px 18px;
-    border:none;
-    border-radius:8px;
+.feature-icon {
+    font-size: 32px;
+    margin-bottom: 15px;
+    display: block;
 }
 
-.cancel-btn{
-    background:transparent;
-    border:1px solid #3E5641;
-    color:#3E5641;
-    padding:8px 18px;
-    border-radius:8px;
+.feature-card h4 {
+    margin-bottom: 10px;
+    font-size: 18px;
 }
 
+.feature-card p {
+    font-size: 13px;
+    color: #6f8a75;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+    .hero {
+        flex-direction: column;
+        text-align: center;
+        padding: 40px 20px;
+    }
+    .cta-group {
+        justify-content: center;
+    }
+    .section {
+        flex-direction: column !important;
+        text-align: center;
+        gap: 30px;
+    }
+    .hero-content h1 {
+        font-size: 32px;
+    }
+}
 </style>
 
-<div class="home-grid">
+<div class="landing-container">
 
-    <!-- LEFT -->
-    <div class="left">
-
-        <div class="card">
-            <div class="avatar">
-                <img src="{{ session('avatar','https://cdn-icons-png.flaticon.com/512/847/847969.png') }}">
+    <!-- HERO SECTION -->
+    <div class="hero">
+        <div class="hero-content">
+            <h1>Moonoma - Where Skills Meet Vision</h1>
+            <p>
+                A modern collaboration platform designed to connect creators, developers, and designers. 
+                Learn together, build real projects, and advance your career in a supportive ecosystem.
+            </p>
+            <div class="cta-group">
+                <a href="{{ route('rooms') }}" class="btn-main">Explore Rooms</a>
+                <a href="{{ route('dashboard') }}" class="btn-sec">My Dashboard</a>
             </div>
         </div>
-
-        <div class="card">
-            <div class="name">{{ session('name','Your Name') }}</div>
-            <div class="role">{{ session('role','Your Role') }}</div>
+        <div class="hero-image">
+            <img src="{{ asset('images/hero.png') }}" alt="Moonoma Hero">
         </div>
-
     </div>
 
-    <!-- RIGHT -->
-    <div class="right">
-
-        <div class="card stats-card">
-            <div class="stat">
-                <span>Room joined</span>
-                <b>{{ $roomsJoined ?? 0 }}</b>
-            </div>
-            <div class="stat">
-                <span>Skill teach</span>
-                <b id="teachCount">{{ count($profile['skill_teach'] ?? []) }}</b>
-            </div>
-            <div class="stat">
-                <span>Skill learn</span>
-                <b id="learnCount">{{ count($profile['skill_learn'] ?? []) }}</b>
-            </div>
+    <!-- WHY MOONOMA SECTION -->
+    <div class="section">
+        <div class="section-img">
+            <img src="{{ asset('images/collaboration.png') }}" alt="Collaboration">
         </div>
-
-        <div class="card">
-            <div class="section-header">
-                <div class="card-title">Skill teach</div>
-                <button class="add-btn" onclick="openModal('teach')">+ Add</button>
-            </div>
-            <div id="teachBox" class="tags">
-                @foreach($profile['skill_teach'] ?? [] as $skill)
-                    <span class="tag">{{ $skill }}</span>
-                @endforeach
-            </div>
+        <div class="section-text">
+            <h2 style="color: #6f8a75;">Why Moonoma was created?</h2>
+            <p>
+                Moonoma was born from a simple vision: Collaboration is the key to growth. 
+                We realized that many great talents were stuck in silos, working alone without mentors or teammates.
+            </p>
+            <p style="margin-top:15px;">
+                We created a space where everyone has something to teach and something to learn. 
+                Not just a chat app, but a workspace that empowers every individual to grow through real interaction.
+            </p>
         </div>
+    </div>
 
-        <div class="card">
-            <div class="section-header">
-                <div class="card-title">Skill learn</div>
-                <button class="add-btn" onclick="openModal('learn')">+ Add</button>
-            </div>
-            <div id="learnBox" class="tags">
-                @foreach($profile['skill_learn'] ?? [] as $skill)
-                    <span class="tag">{{ $skill }}</span>
-                @endforeach
-            </div>
+    <!-- VISION SECTION -->
+    <div class="section reverse">
+        <div class="section-img">
+            <img src="{{ asset('images/vision.png') }}" alt="Vision">
         </div>
+        <div class="section-text">
+            <h2 style="color: #c9a227;">Vision & Mission</h2>
+            <p>
+                Our mission is to democratize access to professional guidance and team collaboration. 
+                We want Moonoma to be the primary hub for anyone looking to start their career in the creative and technology industries.
+            </p>
+            <p style="margin-top:15px;">
+                Our vision is to build a global community connected through innovative projects, 
+                where distance is no longer a barrier to building something extraordinary.
+            </p>
+        </div>
+    </div>
 
+    <!-- FEATURES -->
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h2 style="font-size: 32px;">Core Experience</h2>
+        <p style="color: #6f8a75;">Key features we've built for you.</p>
+    </div>
+
+    <div class="features-grid">
+        <div class="feature-card">
+            <span class="feature-icon">💬</span>
+            <h4>Real-time Chat</h4>
+            <p>Instant discussion with team members without delay, equipped with reply and message deletion features.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">📁</span>
+            <h4>Media Sharing</h4>
+            <p>Send files, images, videos, and audio with a capacity of up to 40MB per file.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">🛡️</span>
+            <h4>Private Rooms</h4>
+            <p>Create exclusive workspaces with secure access codes for your internal team.</p>
+        </div>
+        <div class="feature-card">
+            <span class="feature-icon">📄</span>
+            <h4>CV Storage</h4>
+            <p>Save and share your CV directly on your profile to be noticed by other collaborators.</p>
+        </div>
     </div>
 
 </div>
-
-<!-- MODAL -->
-<div id="skillModal" class="modal">
-    <div class="modal-box">
-
-        <h4>Add Skill</h4>
-
-        <select id="skillSelect">
-            <option value="">Select skill</option>
-            <option>Coding</option>
-            <option>Web Development</option>
-            <option>UI/UX Design</option>
-            <option>Graphic Design</option>
-            <option>Video Editing</option>
-            <option>Computer Networking</option>
-            <option>Fixing Network Problems</option>
-            <option>IT Support</option>
-            <option value="other">Other</option>
-        </select>
-
-        <input id="customSkill" placeholder="Type your skill..." style="display:none;">
-
-        <div class="modal-actions">
-            <button class="cancel-btn" onclick="closeModal()">Cancel</button>
-            <button class="save-btn" onclick="saveSkill()">Save</button>
-        </div>
-
-    </div>
-</div>
-
-<script>
-let currentType = '';
-
-function openModal(type){
-    currentType = type;
-    document.getElementById('skillModal').style.display = 'flex';
-}
-
-function closeModal(){
-    document.getElementById('skillModal').style.display = 'none';
-}
-
-document.getElementById('skillSelect').addEventListener('change', function(){
-    let custom = document.getElementById('customSkill');
-
-    if(this.value === 'other'){
-        custom.style.display = 'block';
-    }else{
-        custom.style.display = 'none';
-        custom.value = '';
-    }
-});
-
-function saveSkill(){
-    let select = document.getElementById('skillSelect').value;
-    let custom = document.getElementById('customSkill').value;
-
-    let skill = (select === 'other') ? custom : select;
-
-    if(!skill){
-        alert('Isi skill dulu');
-        return;
-    }
-
-    // Save to server
-    fetch("{{ route('profile.add-skill') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-        },
-        body: JSON.stringify({
-            type: currentType,
-            skill: skill
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success){
-            let box = currentType === 'teach'
-                ? document.getElementById('teachBox')
-                : document.getElementById('learnBox');
-
-            let tag = document.createElement('span');
-            tag.className = 'tag';
-            tag.innerText = skill;
-
-            box.appendChild(tag);
-
-            updateCount();
-            closeModal();
-            
-            // Optional: reset fields
-            document.getElementById('skillSelect').value = '';
-            document.getElementById('customSkill').value = '';
-            document.getElementById('customSkill').style.display = 'none';
-        } else {
-            alert('Gagal menyimpan skill');
-        }
-    })
-    .catch(err => {
-        console.error(err);
-        alert('Terjadi kesalahan');
-    });
-}
-
-function updateCount(){
-    document.getElementById('teachCount').innerText =
-        document.getElementById('teachBox').querySelectorAll('.tag').length;
-
-    document.getElementById('learnCount').innerText =
-        document.getElementById('learnBox').querySelectorAll('.tag').length;
-}
-</script>
 
 @endsection

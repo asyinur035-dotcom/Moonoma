@@ -202,7 +202,7 @@ select.input option{
             <input 
                 class="input" 
                 id="customRole" 
-                placeholder="Type your role..."
+                placeholder="Custom role (optional)..."
                 style="margin-top:10px; display:none;"
             >
         </div>
@@ -372,7 +372,7 @@ function saveProfile(e){
     let availability = document.getElementById('availabilityInput').value;
     let cvFile = document.getElementById('cvInput').files[0];
 
-    let role = (select === 'other') ? custom : select;
+    let role = (select === 'other') ? (custom.trim() || 'Other') : select;
 
     let formData = new FormData();
     formData.append('name', name);

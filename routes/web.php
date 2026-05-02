@@ -29,14 +29,14 @@ Route::post('/login', function (Request $request) {
     $foundUser = null;
 
     foreach ($users as $user) {
-        if ($user['email'] === $request->email && Illuminate\Support\Facades\Hash::check($request->password, $user['password'])) {
+        if ($user['email'] === $request->email && isset($user['password']) && Illuminate\Support\Facades\Hash::check($request->password, $user['password'])) {
             $foundUser = $user;
             break;
         }
     }
 
     if (!$foundUser) {
-        return back()->withErrors(['email' => 'Email atau password salah'])->withInput();
+        return back()->withErrors(['email' => 'The email or password you entered is incorrect.'])->withInput();
     }
 
     $role = $foundUser['email'] === 'moonomaproject@gmail.com' ? 'admin' : ($foundUser['role'] ?? 'Designer');
@@ -85,9 +85,12 @@ Route::post('/register', function (Request $request) {
         'otp_type' => 'register',
     ]);
 
-    Mail::raw("Kode verifikasi Moonoma kamu adalah: $otp", function ($message) use ($request) {
-        $message->to($request->email)
-            ->subject('Kode Verifikasi Moonoma');
+    Mail::send('emails.otp', [
+        'otp' => $otp, 
+        'title' => 'Verification Code', 
+        'messageText' => 'Welcome to Moonoma! Use the code below to verify your email address and complete your registration.'
+    ], function ($message) use ($request) {
+        $message->to($request->email)->subject('Verify Your Email - Moonoma');
     });
 
     return redirect()
@@ -176,9 +179,12 @@ Route::get('/resend-otp', function () {
         'otp_code' => $otp,
     ]);
 
-    Mail::raw("Kode OTP Moonoma kamu adalah: $otp", function ($message) use ($email) {
-        $message->to($email)
-            ->subject('Kode OTP Moonoma');
+    Mail::send('emails.otp', [
+        'otp' => $otp, 
+        'title' => 'New Verification Code', 
+        'messageText' => 'As requested, here is your new verification code for Moonoma.'
+    ], function ($message) use ($email) {
+        $message->to($email)->subject('New Verification Code - Moonoma');
     });
 
     return back()->with('success', 'OTP dikirim ulang!');
@@ -187,58 +193,86 @@ Route::get('/resend-otp', function () {
 Route::view('/forgot-password', 'auth.forgot-password')->name('password.request');
 
 Route::post('/forgot-password', function (Request $request) {
-    $request->validate([
-        'email' => 'required|email',
-    ], [
-        'email.required' => 'Email wajib diisi.',
-        'email.email' => 'Format email tidak valid.',
-    ]);
+    $request->validate(['email' => 'required|email']);
 
-    $otp = rand(100000, 999999);
+    $users = getUsers();
+    $found = false;
+    $token = bin2hex(random_bytes(32));
 
-    session([
-        'reset_email' => $request->email,
-        'otp_code' => $otp,
-        'otp_type' => 'reset',
-    ]);
-
-    Mail::raw("Kode reset password Moonoma kamu adalah: $otp", function ($message) use ($request) {
-        $message->to($request->email)
-            ->subject('Reset Password Moonoma');
-    });
-
-    return redirect()
-        ->route('verification')
-        ->with('success', 'Kode reset password sudah dikirim ke email kamu.');
-})->name('password.email');
-
-Route::get('/reset-password', function () {
-    if (!session('reset_email')) {
-        return redirect()->route('password.request');
+    foreach ($users as &$user) {
+        if (isset($user['email']) && strtolower($user['email']) === strtolower($request->email)) {
+            $user['reset_token'] = $token;
+            $found = true;
+            break;
+        }
     }
 
-    return view('auth.reset-password');
-})->name('password.reset.form');
+    if (!$found) {
+        return back()->withErrors(['email' => 'User with this email not found.']);
+    }
+
+    saveUsers($users);
+
+    $resetLink = url('/reset-password/' . $token . '?email=' . urlencode($request->email));
+
+    Mail::send('emails.forgot-password', [
+        'link' => $resetLink
+    ], function ($message) use ($request) {
+        $message->to($request->email)->subject('Reset Your Password - Moonoma');
+    });
+
+    return back()->with('success', 'Reset link has been sent to your email.');
+})->name('password.email');
+
+Route::get('/reset-password/{token}', function ($token, Request $request) {
+    $users = getUsers();
+    $foundUser = null;
+
+    foreach ($users as $user) {
+        if (($user['reset_token'] ?? '') === $token) {
+            $foundUser = $user;
+            break;
+        }
+    }
+
+    if (!$foundUser) {
+        return redirect()->route('password.request')->with('error', 'Invalid or expired token.');
+    }
+
+    return view('auth.reset-password', [
+        'token' => $token, 
+        'email' => $foundUser['email']
+    ]);
+})->name('password.reset');
 
 Route::post('/reset-password', function (Request $request) {
     $request->validate([
+        'token' => 'required',
+        'email' => 'required|email',
         'password' => 'required|min:6|confirmed',
-    ], [
-        'password.required' => 'Password baru wajib diisi.',
-        'password.min' => 'Password minimal 6 karakter.',
-        'password.confirmed' => 'Konfirmasi password tidak sama.',
     ]);
 
-    session()->forget([
-        'reset_email',
-        'otp_code',
-        'otp_type',
-    ]);
+    $users = getUsers();
+    $found = false;
+    foreach ($users as &$user) {
+        if (($user['email'] ?? '') === $request->email && ($user['reset_token'] ?? '') === $request->token) {
+            $user['password'] = Illuminate\Support\Facades\Hash::make($request->password);
+            unset($user['reset_token']);
+            $found = true;
+            break;
+        }
+    }
+
+    if (!$found) {
+        return redirect()->route('password.request')->with('error', 'Invalid token or email session.');
+    }
+
+    saveUsers($users);
 
     return redirect()
         ->route('login')
-        ->with('success', 'Password berhasil direset. Silakan login.');
-})->name('password.reset');
+        ->with('success', 'Password reset successfully. Please login.');
+})->name('password.update');
 
 Route::get('/logout', function () {
     session()->flush();
@@ -323,6 +357,10 @@ function saveDeletedMessages($data)
 */
 
 Route::get('/home', function () {
+    return view('home');
+})->name('home');
+
+Route::get('/dashboard', function () {
     $rooms = getRooms();
     $userName = session('name');
 
@@ -330,7 +368,6 @@ Route::get('/home', function () {
     foreach ($rooms as $room) {
         $joined = $room['joined_users'] ?? [];
         $names = array_column($joined, 'name');
-        // handle old string format too
         if (empty($names)) {
             $names = array_filter($joined, 'is_string');
         }
@@ -346,8 +383,8 @@ Route::get('/home', function () {
         $profile = $profileService->getByUserId($userId);
     }
 
-    return view('home', compact('roomsJoined', 'profile'));
-})->name('home');
+    return view('dashboard', compact('roomsJoined', 'profile'));
+})->name('dashboard');
 Route::view('/home/edit', 'home-edit')->name('home.edit');
 
 Route::post('/profile/save', function (Request $request) {
@@ -605,7 +642,8 @@ Route::post('/rooms/join/{slug}', function ($slug) {
                 }
             }
 
-            if ($userRole !== 'admin' && !empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
+            $isOther = strtolower($userRole) === 'other';
+            if ($userRole !== 'admin' && !$isOther && !empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
                 return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
             }
 
@@ -677,7 +715,8 @@ Route::post('/invite/join', function (Request $request) {
             }
 
             $userRole = session('role', session('user_role', ''));
-            if ($userRole !== 'admin' && !empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
+            $isOther = strtolower($userRole) === 'other';
+            if ($userRole !== 'admin' && !$isOther && !empty($room['role_required']) && strtolower($userRole) !== strtolower($room['role_required'])) {
                 return back()->with('error', 'Gagal join! Role kamu (' . ($userRole ?: 'Belum diatur') . ') tidak sesuai dengan requirement: ' . $room['role_required']);
             }
 
@@ -1042,3 +1081,78 @@ Route::get('/auth/google/callback', function () {
 
     return redirect()->route('home');
 });
+
+/*
+|--------------------------------------------------------------------------
+| REPORT
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/report-user', function (Request $request) {
+    $request->validate([
+        'target_email' => 'required|email',
+        'reason' => 'required',
+        'evidence' => 'required|image|max:5120', // 5MB limit
+    ]);
+
+    $reporterName = session('name', 'Anonymous');
+    $reporterEmail = session('email', 'N/A');
+    $targetEmail = $request->target_email;
+    $reason = $request->reason;
+    $roomSlug = $request->room_slug ?? 'N/A';
+
+    // Store evidence
+    $path = null;
+    if ($request->hasFile('evidence')) {
+        $file = $request->file('evidence');
+        $filename = 'report_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
+        $file->storeAs('reports', $filename, 'public');
+        $path = url('storage/reports/' . $filename);
+    }
+
+    $users = getUsers();
+    $targetName = 'Unknown User';
+    foreach ($users as $u) {
+        if (($u['email'] ?? '') === $targetEmail) {
+            $targetName = $u['name'] ?? 'Unknown User';
+            break;
+        }
+    }
+
+    $rooms = getRooms();
+    $roomName = 'Unknown Room';
+    foreach ($rooms as $r) {
+        if (($r['slug'] ?? '') === $roomSlug) {
+            $roomName = $r['name'] ?? 'Unknown Room';
+            break;
+        }
+    }
+
+    // Send Email to Admin
+    $adminEmail = 'moonomaproject@gmail.com';
+    $subject = "[REPORT] User Violation in Room: $roomName";
+    $messageBody = "ADMIN NOTIFICATION\n\n" .
+                   "A user has been reported for a violation.\n\n" .
+                   "REPORT DETAILS:\n" .
+                   "----------------------------\n" .
+                   "REPORTER:\n" .
+                   "Name  : $reporterName\n" .
+                   "Email : $reporterEmail\n\n" .
+                   "TARGET (REPORTED USER):\n" .
+                   "Name  : $targetName\n" .
+                   "Email : $targetEmail\n\n" .
+                   "CONTEXT:\n" .
+                   "Room  : $roomName (Slug: $roomSlug)\n" .
+                   "Reason: $reason\n" .
+                   "Proof : " . ($path ?: 'No image attached') . "\n\n" .
+                   "Please validate and take appropriate action.";
+
+    try {
+        Mail::raw($messageBody, function ($message) use ($adminEmail, $subject) {
+            $message->to($adminEmail)->subject($subject);
+        });
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Failed to send report email. Error: ' . $e->getMessage()]);
+    }
+})->name('report.user');

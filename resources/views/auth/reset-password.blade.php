@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Forgot Password - Moonoma</title>
+<title>Reset Password - Moonoma</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif;}
@@ -15,7 +15,7 @@
         align-items:center;
         min-height:100vh;
     }
-    .wrapper{width:100%;max-width:380px; padding:20px;}
+    .wrapper{width:100%;max-width:360px; padding:20px;}
     .logo{
         font-size: 24px;
         font-weight: 700;
@@ -80,56 +80,39 @@
         font-size: 13px;
         text-align: center;
     }
-    .alert-success { background: rgba(62, 86, 65, 0.2); color: #8fba97; border: 1px solid #3E5641; }
     .alert-error { background: rgba(232, 124, 124, 0.1); color: #e87c7c; border: 1px solid #e87c7c; }
-    
-    .footer {
-        margin-top: 25px;
-        text-align: center;
-        font-size: 13px;
-        color: #888;
-    }
-    .footer a {
-        color: #fff;
-        text-decoration: none;
-        font-weight: 600;
-    }
 </style>
 </head>
 <body>
 
 <div class="wrapper">
     <div class="logo">MOON<span>OMA</span></div>
-    <div class="title">Forgot Password</div>
+    <div class="title">New Password</div>
     <div class="subtitle">
-        Enter your email address and we'll send you a link to reset your password.
+        Create a new secure password for your Moonoma account.
     </div>
-
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
-    @if(session('error'))
-        <div class="alert alert-error">{{ session('error') }}</div>
-    @endif
 
     @if($errors->any())
         <div class="alert alert-error">{{ $errors->first() }}</div>
     @endif
 
-    <form action="{{ route('password.email') }}" method="POST">
+    <form action="{{ route('password.update') }}" method="POST">
         @csrf
+        <input type="hidden" name="token" value="{{ $token }}">
+        <input type="hidden" name="email" value="{{ $email }}">
+
         <div class="form-group">
-            <label class="label">Email Address</label>
-            <input type="email" name="email" class="input" placeholder="name@example.com" required>
+            <label class="label">New Password</label>
+            <input type="password" name="password" class="input" placeholder="Min. 8 characters" required>
         </div>
 
-        <button type="submit" class="btn">Send Reset Link</button>
-    </form>
+        <div class="form-group">
+            <label class="label">Confirm New Password</label>
+            <input type="password" name="password_confirmation" class="input" placeholder="Repeat your password" required>
+        </div>
 
-    <div class="footer">
-        Remembered your password? <a href="{{ route('login') }}">Back to Login</a>
-    </div>
+        <button type="submit" class="btn">Update Password</button>
+    </form>
 </div>
 
 </body>
