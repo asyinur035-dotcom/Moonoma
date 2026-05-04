@@ -65,7 +65,9 @@
 </head>
 <body>
     <div class="container">
-        <div class="logo">MOON<span>OMA</span></div>
+        <div class="logo">
+            <img src="{{ $message->embed(public_path('images/logo_mail.png')) }}" alt="Moonoma Logo" style="height: 80px;">
+        </div>
         <h1>{{ $title }}</h1>
         <p>{{ $messageText }}</p>
         
