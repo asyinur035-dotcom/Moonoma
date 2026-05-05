@@ -59,13 +59,14 @@ Route::post('/register', function (Request $request) {
     $request->validate([
         'name' => 'required',
         'email' => 'required|email',
-        'password' => 'required|min:6',
+        'password' => 'required|min:6|confirmed',
     ], [
         'name.required' => 'Nama wajib diisi.',
         'email.required' => 'Email wajib diisi.',
         'email.email' => 'Format email tidak valid.',
         'password.required' => 'Password wajib diisi.',
         'password.min' => 'Password minimal 6 karakter.',
+        'password.confirmed' => 'Konfirmasi password tidak cocok.',
     ]);
 
     $users = getUsers();
@@ -81,6 +82,7 @@ Route::post('/register', function (Request $request) {
         'register_email' => $request->email,
         'register_name' => $request->name,
         'register_password' => $request->password,
+        'register_role' => $request->role ?? 'Designer',
         'otp_code' => $otp,
         'otp_type' => 'register',
     ]);
@@ -138,7 +140,7 @@ Route::post('/verification', function (Request $request) {
                 'name' => session('register_name'),
                 'email' => session('register_email'),
                 'password' => Illuminate\Support\Facades\Hash::make(session('register_password')),
-                'role' => 'Designer',
+                'role' => session('register_role', 'Designer'),
                 'avatar' => null,
             ];
             saveUsers($users);
@@ -148,6 +150,7 @@ Route::post('/verification', function (Request $request) {
             'register_email',
             'register_name',
             'register_password',
+            'register_role',
             'otp_code',
             'otp_type',
         ]);
@@ -510,6 +513,53 @@ Route::post('/profile/add-skill', function (Request $request) {
     return response()->json(['success' => true]);
 })->name('profile.add-skill');
 
+Route::post('/profile/delete-account', function (Request $request) {
+    $userId = session('user_id');
+    if (!$userId) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+    }
+
+    // Delete from users.json
+    $users = getUsers();
+    $users = array_filter($users, function($u) use ($userId) {
+        return (int)($u['id'] ?? 0) !== (int)$userId;
+    });
+    saveUsers($users);
+
+    // Delete from profiles.json
+    $jsonDb = app(App\Services\JsonDatabaseService::class);
+    $allProfiles = $jsonDb->all('profiles');
+    foreach ($allProfiles as $p) {
+        if ((int)($p['user_id'] ?? 0) === (int)$userId) {
+            $jsonDb->delete('profiles', (int)$p['id']);
+            break;
+        }
+    }
+
+    // Optional: remove user from joined_users in rooms
+    $rooms = getRooms();
+    $roomsUpdated = false;
+    $userEmail = session('email');
+    foreach ($rooms as &$room) {
+        if (!empty($room['joined_users'])) {
+            $initialCount = count($room['joined_users']);
+            $room['joined_users'] = array_filter($room['joined_users'], function($u) use ($userEmail) {
+                return ($u['email'] ?? '') !== $userEmail;
+            });
+            if (count($room['joined_users']) !== $initialCount) {
+                $room['member'] = count($room['joined_users']);
+                $roomsUpdated = true;
+            }
+        }
+    }
+    if ($roomsUpdated) {
+        saveRooms($rooms);
+    }
+
+    session()->flush();
+    return response()->json(['success' => true]);
+})->name('profile.delete-account');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -686,6 +736,12 @@ Route::post('/rooms/{slug}/delete', function ($slug) {
         saveChats($chats);
     }
 
+    // Delete chat attachments (files) from disk
+    $attachmentDir = storage_path('app/public/chat_attachments/' . $slug);
+    if (\Illuminate\Support\Facades\File::exists($attachmentDir)) {
+        \Illuminate\Support\Facades\File::deleteDirectory($attachmentDir);
+    }
+
     return redirect()->route('rooms')->with('success', 'Room berhasil dihapus.');
 })->name('room.delete');
 
@@ -739,6 +795,83 @@ Route::post('/invite/join', function (Request $request) {
 
     return back()->with('error', 'Kode room tidak ditemukan');
 })->name('room.join');
+
+
+/*
+|--------------------------------------------------------------------------
+| WORKSPACE AJAX
+|--------------------------------------------------------------------------
+*/
+
+Route::post('/rooms/{slug}/workspace/save', function (Request $request, $slug) {
+    $rooms = getRooms();
+    $found = false;
+    foreach ($rooms as &$room) {
+        if (($room['slug'] ?? '') === $slug) {
+            // check permission
+            if (session('email') !== ($room['created_by'] ?? '') && session('role') !== 'admin') {
+                return response()->json(['success' => false, 'message' => 'Unauthorized']);
+            }
+            $room['workspace_design_link'] = $request->design_link;
+            $room['workspace_desc'] = $request->description;
+            $room['workspace_tasks'] = json_decode($request->tasks, true) ?? [];
+            $found = true;
+            break;
+        }
+    }
+    if ($found) {
+        saveRooms($rooms);
+        return response()->json(['success' => true]);
+    }
+    return response()->json(['success' => false, 'message' => 'Room not found']);
+})->name('workspace.save');
+
+Route::post('/rooms/{slug}/workspace/submit-task', function (Request $request, $slug) {
+    $rooms = getRooms();
+    $found = false;
+    $email = session('email');
+    if (!$email) return response()->json(['success' => false, 'message' => 'Not logged in']);
+
+    $request->validate([
+        'task_index' => 'required|numeric',
+        'file' => 'required|file|max:10240', // 10MB max
+    ]);
+
+    foreach ($rooms as &$room) {
+        if (($room['slug'] ?? '') === $slug) {
+            $taskIndex = $request->task_index;
+            $file = $request->file('file');
+            $filename = 'task_' . $taskIndex . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('workspace_submissions/' . $slug . '/' . md5($email), $filename, 'public');
+            
+            $progress = $room['workspace_progress'] ?? [];
+            if (!isset($progress[$email]) || !is_array($progress[$email])) {
+                $progress[$email] = [];
+            }
+            
+            // Check if legacy simple array
+            if (count($progress[$email]) > 0 && isset($progress[$email][0]) && is_numeric($progress[$email][0])) {
+                $newProg = [];
+                foreach ($progress[$email] as $idx) {
+                    $newProg[$idx] = "legacy_completed";
+                }
+                $progress[$email] = $newProg;
+            }
+            
+            $progress[$email][$taskIndex] = 'storage/' . $path;
+            
+            $room['workspace_progress'] = $progress;
+            $found = true;
+            break;
+        }
+    }
+    
+    if ($found) {
+        saveRooms($rooms);
+        return response()->json(['success' => true]);
+    }
+    return response()->json(['success' => false, 'message' => 'Room not found']);
+})->name('workspace.submit-task');
 
 
 /*
@@ -1042,9 +1175,11 @@ Route::get('/auth/google/callback', function () {
 
     $users = getUsers();
     $foundUser = null;
-    foreach ($users as $u) {
+    $foundIndex = -1;
+    foreach ($users as $index => $u) {
         if ($u['email'] === $googleUser->getEmail()) {
             $foundUser = $u;
+            $foundIndex = $index;
             break;
         }
     }
@@ -1067,16 +1202,22 @@ Route::get('/auth/google/callback', function () {
         ];
         $users[] = $foundUser;
         saveUsers($users);
+    } else {
+        // Sync Google avatar for existing users
+        $users[$foundIndex]['avatar'] = $googleUser->getAvatar();
+        // Keep existing name if they changed it, but sync avatar
+        $foundUser = $users[$foundIndex];
+        saveUsers($users);
     }
 
     session([
         'is_login' => true,
         'user_id' => $foundUser['id'],
-        'name' => $googleUser->getName(),
-        'email' => $googleUser->getEmail(),
+        'name' => $foundUser['name'],
+        'email' => $foundUser['email'],
         'google_id' => $googleUser->getId(),
-        'role' => $role,
-        'avatar' => $foundUser['avatar'] ?? null,
+        'role' => $foundUser['role'] ?? $role,
+        'avatar' => $foundUser['avatar'],
     ]);
 
     return redirect()->route('home');

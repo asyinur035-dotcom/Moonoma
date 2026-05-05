@@ -202,6 +202,23 @@ input:-webkit-autofill:focus{
 <div class="title">Login to Moonoma</div>
 <div class="subtitle">Everyone needs a space to grow. This is yours.</div>
 
+@if ($errors->any())
+<div style="background: rgba(232, 124, 124, 0.1); color: #e87c7c; border: 1px solid #e87c7c; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 13px;">
+    <ul style="padding-left: 20px; margin: 0;">
+        @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
+@if (session('success'))
+<div style="background: rgba(62, 86, 65, 0.2); color: #8fba97; border: 1px solid #3E5641; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 13px; text-align: center;">
+    {{ session('success') }}
+</div>
+@endif
+
+
 <form method="POST" action="{{ route('login') }}">
 @csrf
 

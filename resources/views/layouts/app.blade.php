@@ -200,8 +200,7 @@ body{
 <!-- MOBILE HEADER -->
 <div class="mobile-header">
     <div class="logo" style="margin-bottom:0;">
-        <div class="logo-icon" style="width:28px; height:28px; font-size:14px;">🌙</div>
-        <div style="font-size:14px; font-weight:600;">Moonoma</div>
+        <img src="{{ asset('images/logo.png') }}" alt="Moonoma Collaborative Room" style="max-height: 32px; width: auto;">
     </div>
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
 </div>
@@ -215,11 +214,7 @@ body{
 
         <!-- LOGO -->
         <div class="logo">
-            <div class="logo-icon">🌙</div>
-            <div>
-                <div>Moonoma</div>
-                <div style="font-size:10px;color:#555;">WORKSPACE</div>
-            </div>
+            <img src="{{ asset('images/logo.png') }}" alt="Moonoma Collaborative Room" style="max-height: 45px; width: auto;">
         </div>
 
         <!-- NAV -->

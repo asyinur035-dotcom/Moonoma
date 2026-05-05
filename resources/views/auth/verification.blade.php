@@ -114,6 +114,16 @@
         <div class="alert alert-error">{{ session('error') }}</div>
     @endif
 
+    @if($errors->any())
+        <div class="alert alert-error">
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form action="{{ route('verify.otp') }}" method="POST" id="otpForm">
         @csrf
         <input type="hidden" name="otp" id="fullOtp">

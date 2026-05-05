@@ -156,14 +156,26 @@ select.input option{
 
 /* BUTTON */
 .save-btn{
-    margin-top:25px;
     background:#3E5641;
     border:none;
     padding:12px 30px;
     border-radius:25px;
     color:#fff;
-    float:right;
     cursor:pointer;
+}
+
+.delete-account-btn{
+    background:transparent;
+    border:1px solid #e87c7c;
+    padding:12px 25px;
+    border-radius:25px;
+    color:#e87c7c;
+    cursor:pointer;
+    font-size:13px;
+    transition:0.3s;
+}
+.delete-account-btn:hover{
+    background:rgba(232, 124, 124, 0.1);
 }
 </style>
 
@@ -282,7 +294,10 @@ select.input option{
 
         </div>
 
-        <button class="save-btn">Save</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:35px;">
+            <button type="button" class="delete-account-btn" onclick="deleteAccount()">Delete Account</button>
+            <button type="submit" class="save-btn">Save</button>
+        </div>
 
     </div>
 
@@ -324,6 +339,28 @@ function deleteCV() {
         document.getElementById('cvStatus').style.display = 'block';
         document.getElementById('cvStatus').innerText = 'CV akan dihapus setelah disimpan';
         isDeletingCV = true;
+    }
+}
+
+function deleteAccount() {
+    if (confirm('Apakah Anda yakin ingin menghapus akun ini secara permanen? Semua data dan pesan Anda akan hilang. Tindakan ini tidak dapat dibatalkan.')) {
+        fetch("{{ route('profile.delete-account') }}", {
+            method: "POST",
+            headers: {
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            }
+        }).then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                alert('Akun berhasil dihapus.');
+                window.location.href = "{{ route('login') }}";
+            } else {
+                alert(data.message || 'Gagal menghapus akun.');
+            }
+        }).catch(err => {
+            console.error(err);
+            alert('Terjadi kesalahan saat menghapus akun.');
+        });
     }
 }
 
