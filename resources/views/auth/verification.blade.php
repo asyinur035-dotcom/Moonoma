@@ -16,13 +16,16 @@
         min-height:100vh;
     }
     .wrapper{width:100%;max-width:360px; padding:20px;}
-    .logo{
-        font-size: 24px;
-        font-weight: 700;
-        margin-bottom: 20px;
-        text-align: center;
+    .auth-logo{
+        width: 260px;
+        height: auto;
+        max-width: 100%;
+        margin-bottom: 25px;
+        object-fit: contain;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
     }
-    .logo span { color: #3E5641; }
     .title{font-size:22px; margin-bottom:8px; text-align: center; font-weight: 600;}
     .subtitle{
         font-size:13px;
@@ -100,7 +103,7 @@
 <body>
 
 <div class="wrapper">
-    <div class="logo">MOON<span>OMA</span></div>
+    <img src="{{ asset('images/logo.png') }}" alt="Moonoma Logo" class="auth-logo">
     <div class="title">Verification</div>
     <div class="subtitle">
         We've sent a 6-digit verification code to your email. Please enter it below.

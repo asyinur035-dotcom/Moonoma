@@ -62,7 +62,7 @@
 <body>
     <div class="container">
         <div class="logo">
-            <img src="{{ $message->embed(public_path('images/logo_mail.png')) }}" alt="Moonoma Logo" style="height: 80px;">
+            <img src="{{ $message->embed(public_path('images/logo.png')) }}" alt="Moonoma Logo" style="width: 200px; height: auto; max-width: 100%;">
         </div>
         <h1>Reset Your Password</h1>
         <p>

@@ -32,12 +32,15 @@ body{
 }
 
 /* LOGO */
-.logo-box{
-    width:50px;
-    height:50px;
-    border-radius:10px;
-    background:#d9d9d9;
-    margin-bottom:20px;
+.auth-logo{
+    width: 260px;
+    height: auto;
+    max-width: 100%;
+    margin-bottom: 25px;
+    object-fit: contain;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* TEXT */
@@ -197,7 +200,7 @@ input:-webkit-autofill:focus{
 
 <div class="login-wrapper">
 
-<div class="logo-box"></div>
+<img src="{{ asset('images/logo.png') }}" alt="Moonoma Logo" class="auth-logo">
 
 <div class="title">Login to Moonoma</div>
 <div class="subtitle">Everyone needs a space to grow. This is yours.</div>

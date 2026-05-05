@@ -239,7 +239,7 @@ Route::get('/reset-password/{token}', function ($token, Request $request) {
     }
 
     if (!$foundUser) {
-        return redirect()->route('password.request')->with('error', 'Invalid or expired token.');
+        return redirect()->route('password.request')->with('error', 'Invalid or expired token (GET).');
     }
 
     return view('auth.reset-password', [
@@ -258,7 +258,7 @@ Route::post('/reset-password', function (Request $request) {
     $users = getUsers();
     $found = false;
     foreach ($users as &$user) {
-        if (($user['email'] ?? '') === $request->email && ($user['reset_token'] ?? '') === $request->token) {
+        if (strtolower($user['email'] ?? '') === strtolower($request->email) && ($user['reset_token'] ?? '') === $request->token) {
             $user['password'] = Illuminate\Support\Facades\Hash::make($request->password);
             unset($user['reset_token']);
             $found = true;
@@ -267,7 +267,7 @@ Route::post('/reset-password', function (Request $request) {
     }
 
     if (!$found) {
-        return redirect()->route('password.request')->with('error', 'Invalid token or email session.');
+        return redirect()->route('password.request')->with('error', 'Invalid token or email session (POST).');
     }
 
     saveUsers($users);
@@ -1272,24 +1272,20 @@ Route::post('/report-user', function (Request $request) {
     // Send Email to Admin
     $adminEmail = 'moonomaproject@gmail.com';
     $subject = "[REPORT] User Violation in Room: $roomName";
-    $messageBody = "ADMIN NOTIFICATION\n\n" .
-                   "A user has been reported for a violation.\n\n" .
-                   "REPORT DETAILS:\n" .
-                   "----------------------------\n" .
-                   "REPORTER:\n" .
-                   "Name  : $reporterName\n" .
-                   "Email : $reporterEmail\n\n" .
-                   "TARGET (REPORTED USER):\n" .
-                   "Name  : $targetName\n" .
-                   "Email : $targetEmail\n\n" .
-                   "CONTEXT:\n" .
-                   "Room  : $roomName (Slug: $roomSlug)\n" .
-                   "Reason: $reason\n" .
-                   "Proof : " . ($path ?: 'No image attached') . "\n\n" .
-                   "Please validate and take appropriate action.";
+    
+    $data = [
+        'reporterName' => $reporterName,
+        'reporterEmail' => $reporterEmail,
+        'targetName' => $targetName,
+        'targetEmail' => $targetEmail,
+        'roomName' => $roomName,
+        'roomSlug' => $roomSlug,
+        'reason' => $reason,
+        'path' => $path
+    ];
 
     try {
-        Mail::raw($messageBody, function ($message) use ($adminEmail, $subject) {
+        Mail::send('emails.report', $data, function ($message) use ($adminEmail, $subject) {
             $message->to($adminEmail)->subject($subject);
         });
         return response()->json(['success' => true]);

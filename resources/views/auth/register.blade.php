@@ -25,10 +25,15 @@ body{
     max-width:420px;
 }
 
-.logo{
-    width:48px;height:48px;
-    background:#ccc;border-radius:8px;
-    margin-bottom:20px;
+.auth-logo{
+    width: 260px;
+    height: auto;
+    max-width: 100%;
+    margin-bottom: 25px;
+    object-fit: contain;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .title{font-size:20px;margin-bottom:6px;}
@@ -130,7 +135,7 @@ body{
 
 <div class="wrapper">
 
-<div class="logo"></div>
+<img src="{{ asset('images/logo.png') }}" alt="Moonoma Logo" class="auth-logo">
 
 <div class="title">Register to Moonoma</div>
 <div class="subtitle">Everyone needs a space to grow. This is yours.</div>
